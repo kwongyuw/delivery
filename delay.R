@@ -85,10 +85,10 @@ summary(lm(as.numeric(delay)~prereq + price,data=temp))
 #ggplot(dfl, aes(x=prereq/60, y=(as.numeric(require_tm) - as.numeric(dipatch_tm))/60)) + geom_point(size=0.1, alpha=0.3) + geom_smooth() + geom_abline(slope=1,intercept=0) + coord_cartesian(ylim=c(-200,200),xlim=c(0,2500))
 
 #even if those call in too early ones
-#lm0<- lm(as.numeric(delay)~ prereq + price,data=filter(temp, prereq>2400, prereq<3600))
-#lm<- lm(as.numeric(delay)~ prereq +price,data=filter(temp, prereq>2400, prereq<3600, left1>1200))
-#lm1<- lm(as.numeric(delay)~ prereq + price,data=filter(temp,prereq>2400, prereq<3600,left1>2400))
-#stargazer(lm0, lm, lm1, type="text", report="cvt*")
+lm0<- lm(as.numeric(delay)~ prereq + price,data=filter(temp, prereq>2400, prereq<3600))
+lm<- lm(as.numeric(delay)~ prereq +price,data=filter(temp, prereq>2400, prereq<3600, left1>1200))
+lm1<- lm(as.numeric(delay)~ prereq + price,data=filter(temp,prereq>2400, prereq<3600,left1>2400))
+stargazer(lm0, lm, lm1, type="text", report="cvt*")
 
 #to run in cluster
 #set 1 (same effect w/ rider FE)
