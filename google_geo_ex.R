@@ -41,7 +41,7 @@ geocodeAddress <- function(address) {
   } else {
     out <- NA
   }
-  Sys.sleep(0.05) # API only allows 50 requests per second for non-verified user
+  Sys.sleep(0.0167) # Verified developer now 160/s (API only allows 50 requests per second for non-verified user)
   out
 }
 #Google API call
