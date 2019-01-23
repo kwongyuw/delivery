@@ -16,10 +16,7 @@ data <- read.xlsx(data_fn, na.strings = "")
 
 glimpse(data)
 
-data_test <- data %>%
-  slice(1:100) 
-
-geo_data <- data_test %>%
+geo_data <- data %>%
   select(address) %>% 
   distinct(.)
 
@@ -85,7 +82,7 @@ for (i in 1:nrow(geo_data)) {
 }
 
 #add addresses w/geo_cords back to main dataset
-data_result <- left_join(data_test, geo_data, by = c("address"))
+data_result <- left_join(data, geo_data, by = c("address"))
 
 #write.csv(geo_data, "geo_aug1.csv")
 
