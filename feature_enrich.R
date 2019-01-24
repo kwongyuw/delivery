@@ -118,7 +118,12 @@ user <- group_by(df, user_id) %>%
 df$sup_name <- NA
 #via haoma.baidu.com 
 df$sup_name[grepl("18217774279",df$from_tel)] <- "CoCo都可茶饮(浦电路店)"
+df$sup_name[grepl("18621672116",df$from_tel)] <- "上海联通"   #no info
 df$sup_name[grepl("15721077747",df$from_tel)] <- "鲜芋仙(日月光店)"
-df$sup_name[grepl("18621672116",df$from_tel)] <- "上海联通"
 
-
+#via Baidu place information api
+#http://api.map.baidu.com/place/v2/search?query=%E6%B5%A6%E4%B8%9C%E6%96%B0%E5%8C%BA%E9%BE%99%E6%B1%87%E8%B7%AF338%E5%8F%B7%E6%96%B0%E9%83%BD%E6%B1%87%E7%BE%8E%E9%A3%9F%E5%B9%BF%E5%9C%BA&region=%E4%B8%8A%E6%B5%B7&scope=2&output=json&ak=
+#http://map.baidu.com/detail?qt=ninf&uid=e85e25272a109d4a94f08cee&detail=cater
+#but failed to find 鮮芋仙 from api
+#http://api.map.baidu.com/place/v2/search?query=%E5%BE%90%E6%B1%87%E5%8C%BA%E5%BE%90%E5%AE%B6%E6%B1%87%E8%B7%AF618%E5%8F%B7%E6%97%A5%E6%9C%88%E5%85%89%E4%B8%AD%E5%BF%83%E5%B9%BF%E5%9C%BA&region=%E4%B8%8A%E6%B5%B7&scope=2&output=json&ak=
+#documentation: http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-placeapi
