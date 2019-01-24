@@ -114,5 +114,11 @@ user <- group_by(df, user_id) %>%
             price_avg=mean(price), price_sd=sd(price), span=max(finish_tm)-min(finish_tm))
 
 
+#store info 
+df$sup_name <- NA
+#via haoma.baidu.com 
+df$sup_name[grepl("18217774279",df$from_tel)] <- "CoCo都可茶饮(浦电路店)"
+df$sup_name[grepl("15721077747",df$from_tel)] <- "鲜芋仙(日月光店)"
+df$sup_name[grepl("18621672116",df$from_tel)] <- "上海联通"
 
 
