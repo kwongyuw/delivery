@@ -4,6 +4,7 @@ library(readxl)
 library(lubridate)
 library(hms)
 
+Sys.setlocale(locale="en_us.UTF-8")
 setwd('~/Google Drive/dwb/dwb_Data')
 
 data_fn <- '~/Google Drive/dwb/dwb_Data/Aug_C3_P1.xlsx'

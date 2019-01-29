@@ -5,12 +5,12 @@ library(stringr)
 library(openxlsx)
 library(data.table)
 
-source('/Volumes/GoogleDrive/Team Drives/delivery/data/cred.txt')
+source('/Users/kwongyu/Google Drive/dwb/cred.txt')
 
 
 #Grab data 
 
-data_dir <- '/Volumes/GoogleDrive/Team Drives/delivery/data'
+data_dir <- '/Users/kwongyu/Google Drive/dwb/dwb_Data'
 
 
 temp = list.files(path = data_dir, pattern="*.xlsx$")
