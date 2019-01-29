@@ -37,7 +37,8 @@ sup_addr$cleaned[grep("(.*)[0-9一二三四]楼$", sup_addr$cleaned)] <-
 #层
 
 
-
 #debug review
 table(substring(sup_addr$from_addr, nchar(sup_addr$from_addr), nchar(sup_addr$from_addr)))
 table(substring(sup_addr$cleaned, nchar(sup_addr$cleaned), nchar(sup_addr$cleaned)))
+
+df <- left_join(df, select(sup_addr, from_addr, cleaned, supple), by="from_addr")
