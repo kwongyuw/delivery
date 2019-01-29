@@ -6,7 +6,7 @@ library(openxlsx)
 library(data.table)
 
 source('/Volumes/GoogleDrive/Team Drives/delivery/data/cred.txt')
-
+# source('~/Documents/eScience/projects/delivery/baidu_geo_func.R')
 
 #Grab data 
 
@@ -57,7 +57,7 @@ geo_data$LON<-NA
 g_add=list()
 
 for (i in 1:nrow(geo_data)) {
-  g_add <- geocodeAddress(geo_data$address[i])
+  g_add <- geocodeAddress(geo_data[,1][i])
   geo_data$LAT[i] <- g_add[1]
   geo_data$LON[i] <- g_add[2]
 
@@ -123,7 +123,7 @@ geo_data$LON<-NA
 g_add=list()
 
 for (i in 1:nrow(geo_data)) {
-  g_add <- geocodeAddress(geo_data$address[i])
+  g_add <- geocodeAddress(geo_data[,1][i])
   geo_data$LAT[i] <- g_add[1]
   geo_data$LON[i] <- g_add[2]
   
