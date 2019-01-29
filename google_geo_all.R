@@ -6,7 +6,7 @@ library(openxlsx)
 library(data.table)
 
 source('/Users/kwongyu/Google Drive/dwb/cred.txt')
-
+# source('~/Documents/eScience/projects/delivery/baidu_geo_func.R')
 
 #Grab data 
 
@@ -57,10 +57,10 @@ geo_data$LON<-NA
 g_add=list()
 
 for (i in 1:nrow(geo_data)) {
-  g_add <- geocodeAddress(geo_data$address[i])
+  g_add <- geocodeAddress(geo_data[,1][i])
   geo_data$LAT[i] <- g_add[1]
   geo_data$LON[i] <- g_add[2]
-
+  
   if ((i %% 100) ==0) cat(paste(i," "))
   if (i == nrow(geo_data)) cat("Done!\n")
 }
@@ -70,8 +70,8 @@ data_result <- left_join(data, geo_data, by = c("address"))
 
 # from saved on whole data set the things that were already ran
 geo_aug1 <- fread(file = '/Volumes/GoogleDrive/Team Drives/delivery/data/geo_aug1.csv', 
-                   na.strings = c(""),
-                   stringsAsFactors = F)
+                  na.strings = c(""),
+                  stringsAsFactors = F)
 
 geo_test <- geo_aug1 %>%
   select(-V1, -X, -address) %>%
@@ -92,8 +92,7 @@ data_geo_all <- bind_rows(data_result, data_geo_aug1)
 ##########
 rm(list=setdiff(ls(), c("data_geo_all", "ak_bd_brow", "ak_bd_serv", "apikey")))
 
-data_geo_all <- data %>% 
-  slice(1:20) #TEST
+data_geo_all <- data 
 
 geo_data <- data_geo_all %>%
   select(from_addr) %>% 
@@ -123,7 +122,7 @@ geo_data$LON<-NA
 g_add=list()
 
 for (i in 1:nrow(geo_data)) {
-  g_add <- geocodeAddress(geo_data$address[i])
+  g_add <- geocodeAddress(geo_data[,1][i])
   geo_data$LAT[i] <- g_add[1]
   geo_data$LON[i] <- g_add[2]
   
@@ -134,4 +133,5 @@ for (i in 1:nrow(geo_data)) {
 #add addresses w/geo_cords back to main dataset
 data_result <- left_join(data_geo_all, geo_data, by = c("from_addr"))
 
-# write.csv()
+write.csv(data_result, "data_full_from_addr.csv")
+
