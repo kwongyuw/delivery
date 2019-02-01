@@ -135,3 +135,5 @@ for (i in 1:nrow(geo_data)) {
 data_result <- left_join(data_geo_all, geo_data, by = c("from_addr"))
 
 # write.csv()
+data %>% filter(str_detect(from_addr, '#')) %>% select(from_addr) %>% distinct(.)
+  

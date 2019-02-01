@@ -1,3 +1,6 @@
+library(DBI)
+library(stringr)
+
 
 #Baidu API call
 geocodeAddress <- function(address) {
