@@ -34,7 +34,9 @@ a_df <- left_join(or_df, dist_df, by = "id")
 
 
 # join restaurant information 
+sup <- read.csv(file.path(data_dir ,'sup.csv'), stringsAsFactors = F) %>% select(-X.1,-X)
 
+df_all <- left_join(a_df, sup, by=c('sup_id', 'from_tel', 'from_addr'))
 
 
 
