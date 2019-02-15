@@ -5,6 +5,7 @@ library(stringr)
 library(openxlsx)
 library(data.table)
 
+Sys.setlocale(locale="en_us.UTF-8")
 source('/Users/kwongyu/Google Drive/dwb/cred.txt')
 # source('~/Documents/eScience/projects/delivery/baidu_geo_func.R')
 
@@ -47,31 +48,82 @@ write.csv(sup_data,'sup_list.csv')
 #===========================
 #after sup info scraped
 #===========================
-sup_info <- read.csv('sup_info.csv')
+setwd('~/Google Drive/dwb/dwb_Data')
+sup_info <- read.csv('sup_info3.csv', stringsAsFactors = FALSE)
 
-temp <- separate(sup_info, details, c('name', 'd1','tags', 'd2', 'from_addr_xms',  'd3', 'avgexp', 
+temp <- sup_info
+temp$details <- sub('\n详情\n标签:','\n标签:', temp$details)
+temp <- separate(temp, details, c('name', 'd1','tags', 'd2', 'from_addr_xms',  'd3', 'avgexp', 
                                       'taste', 'envir', 'service','d7', 'comment', 'remarks'),
                  sep = "\n", remove=FALSE, extra="merge") %>%
   select(-'d1', -'d2', -'d3', -'d7') %>%
-  separate(avgexp,c("avgexp_lo", 'avgexp_up'), sep='-')
-temp$avgexp_lo <- sub('^¥','', temp$avgexp_lo)
+  separate(avgexp,c("avgexp_lo", 'avgexp_up'), sep='-') %>%
+  filter(!is.na(taste))
+temp$avgexp_lo <- as.numeric(sub('^¥','', temp$avgexp_lo))
 temp$taste <- sub('^.*:','', temp$taste)
 temp$envir <- sub('^.*:','', temp$envir)
 temp$service <- sub('^.*:','', temp$service)
+temp$from_tel[temp$from_tel==""] <- temp$from_.tel[temp$from_tel==""]
+temp$from_.tel <- NULL
+temp[,8:12] <- lapply(temp[,8:12],as.numeric)
 
-#{'sup_id': 11805, 'from_addr': '上海市长宁区天山西路568号1幢101室(近地铁2号线淞虹路站)', '
-#from_tel': '02152190867,18202163818,', 'details': '四海游龙 天山西路店\n标签:\n中式快餐
-#简餐北新泾淞虹路站\n地址:\n上海长宁区 天山西路568号1幢101室(近地铁2号线淞虹路站)\n人均:\n
-#¥17-35\n口味:3.5\n环境:3.5\n服务:3.5\n点评:\n最喜欢原味锅贴，皮很薄，不过馅料不多，吃口正
-#好！酸辣汤是老公最爱，可惜现在越来越…\n粉丝汤(2) 香酥鸡(2) 02152190867 021-52190867...'
-#, 'bulk': '默认\n↓\n| 人均⬆ | 人均⬇ |\n口味 | 环境 | 服务\n四海游龙 天山西路店\n标签:\n中
-#式快餐简餐北新泾淞虹路站\n地址:\n上海长宁区 天山西路568号1幢101室(近地铁2号线淞虹路站)\n
-#人均:\n¥17-35\n口味:3.5\n环境:3.5\n服务:3.5\n点评:\n最喜欢原味锅贴，皮很薄，不过馅料不多
-#，吃口正好！酸辣汤是老公最爱，可惜现在越来越…\n粉丝汤(2) 香酥鸡(2) 02152190867 021-521908
-#67...\n四海游龙 剑河店 OVERSEAS DRAGON\n标签:\n中式快餐简餐快餐简餐北新泾西郊百联\n地址:\
-#n上海长宁区 剑河路512号(近西郊百联)\n人均:\n¥10-20\n口味:3.5\n环境:3.3\n服务:3.3\n点评:\n
-#外卖回家吃的，不错，赞一个\n蛮实惠的，生意自然很好。 提供在线菜单 02152190867 021-5219086
-#7...\n+添加餐厅\n«1»\n没有找到想要的餐厅？立即添加，可获30-50枚秘币。\n您对搜索结果： 满
-#意 不满意', 'comments_full': '匿名用户\n口味: 4 环境: 4 服务: 3\n最喜欢原味锅贴，皮很薄，
-#不过馅料不多，吃口正好！酸辣汤是老公最爱，可惜现在越来越稀了~\n2012-11-08 17:10 四海游龙(
-#天山西路店)'}
+# ready for merging back (not yet manually checking which is the best)
+df <- temp
+df$adist_long <- diag(adist((df$from_addr), (df$from_addr_xms)) / 
+                       pmax(unlist(lapply((df$from_addr_xms),nchar)),unlist(lapply((df$from_addr),nchar))))
+df$adist_short <- diag(adist((df$from_addr), (df$from_addr_xms)) / 
+                        pmin(unlist(lapply((df$from_addr_xms),nchar)),unlist(lapply((df$from_addr),nchar))))
+df$match_manual <- NA
+df$match_rule <- 1
+df$match_rule[(df$adist_long>0.7 & df$adist_short>=1)] <- 0
+
+df <- df[!duplicated(select(df, sup_id, from_tel, from_addr,from_addr_xms)),]
+
+#=======================================
+#manual <- function(id_tel_addr) {
+#  drop <- c()
+#  #count <- 0
+#  for (i in 1:dim(id_tel_addr)[1]){
+#    temp <- filter(id_tel_addr, from_addr==id_tel_addr$from_addr[i], from_tel==id_tel_addr$from_tel[i])
+#    if (dim(temp)[1] >1) {
+#      print(i)
+#      #count <- count +1
+#      print(temp$from_addr) #temp$from_addr_xms
+#      print(temp$from_addr_xms)
+#      print(temp$X)
+#      input <- readline(prompt='which one to drop')
+#      drop <- c(drop, input)
+#      id_tel_addr <- filter(id_tel_addr,!(X %in% drop))
+#      print(dim(id_tel_addr)[1])
+#    }
+#  }
+#  #print(count)
+#  out <- id_tel_addr
+#}
+#df <- manual(df)
+#=======================================
+
+#instead of manual check (>5mins for 20 records), just keeping the one with lowest adist_long?
+temp1 <- group_by(df, sup_id, from_tel, from_addr) %>%
+  arrange(adist_long) %>%
+  top_n(1)
+
+
+write.csv(df,'sup.csv')
+
+#df$sup_name <- NA
+#via haoma.baidu.com 
+#df$sup_name[grepl("18217774279",df$from_tel)] <- "CoCo都可茶饮(浦电路店)"
+#df$sup_name[grepl("18621672116",df$from_tel)] <- "上海联通"   #no info
+#df$sup_name[grepl("15721077747",df$from_tel)] <- "鲜芋仙(日月光店)"
+
+#via Baidu place information api
+#http://api.map.baidu.com/place/v2/search?query=%E6%B5%A6%E4%B8%9C%E6%96%B0%E5%8C%BA%E9%BE%99%E6%B1%87%E8%B7%AF338%E5%8F%B7%E6%96%B0%E9%83%BD%E6%B1%87%E7%BE%8E%E9%A3%9F%E5%B9%BF%E5%9C%BA&region=%E4%B8%8A%E6%B5%B7&scope=2&output=json&ak=
+#http://map.baidu.com/detail?qt=ninf&uid=e85e25272a109d4a94f08cee&detail=cater
+#but failed to find 鮮芋仙 from api
+#http://api.map.baidu.com/place/v2/search?query=%E5%BE%90%E6%B1%87%E5%8C%BA%E5%BE%90%E5%AE%B6%E6%B1%87%E8%B7%AF618%E5%8F%B7%E6%97%A5%E6%9C%88%E5%85%89%E4%B8%AD%E5%BF%83%E5%B9%BF%E5%9C%BA&region=%E4%B8%8A%E6%B5%B7&scope=2&output=json&ak=
+#documentation: http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-placeapi
+
+
+
+
