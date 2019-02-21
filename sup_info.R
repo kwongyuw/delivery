@@ -50,6 +50,11 @@ write.csv(sup_data,'sup_list.csv')
 #===========================
 setwd('~/Google Drive/dwb/dwb_Data')
 sup_info <- read.csv('sup_info3.csv', stringsAsFactors = FALSE)
+#supplementing tag info (tags have all words inseparably tgt)
+addtag_a <- read.csv("sup_info.csv", stringsAsFactors = FALSE) %>% select(details:tag4)
+addtag_b <- read.csv("sup_info1b.csv", stringsAsFactors = FALSE) %>% select(details:tag4)
+addtag <- rbind(addtag_a, addtag_b)
+sup_info <- left_join(sup_info, addtag, by=c("sup_id", "from_addr", "from_tel", "details")) 
 
 temp <- sup_info
 temp$details <- sub('\n详情\n标签:','\n标签:', temp$details)
@@ -79,7 +84,9 @@ df$match_rule[(df$adist_long>0.7 & df$adist_short>=1)] <- 0
 
 df <- df[!duplicated(select(df, sup_id, from_tel, from_addr,from_addr_xms)),]
 
-#=======================================
+
+
+#===Manual filter====================================
 #manual <- function(id_tel_addr) {
 #  drop <- c()
 #  #count <- 0
@@ -104,10 +111,9 @@ df <- df[!duplicated(select(df, sup_id, from_tel, from_addr,from_addr_xms)),]
 #=======================================
 
 #instead of manual check (>5mins for 20 records), just keeping the one with lowest adist_long?
-temp1 <- group_by(df, sup_id, from_tel, from_addr) %>%
+df <- group_by(df, sup_id, from_tel, from_addr) %>%
   arrange(adist_long) %>%
   top_n(1)
-
 
 write.csv(df,'sup.csv')
 

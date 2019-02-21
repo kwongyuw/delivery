@@ -22,7 +22,7 @@ df <- do.call(bind_rows,
 #(manip raw) order features
 #timing info
 df <- mutate(df, delay=as.numeric(finish_tm)-as.numeric(require_tm), prereq=as.numeric(require_tm)-as.numeric(place_tm), 
-             prepare=as.numeric(leave_tm)-as.numeric(receive_tm), ride=as.numeric(finish_tm)-as.numeric(leave_tm), 
+             prepare=as.numeric(leave_tm)-as.numeric(dipatch_tm), ride=as.numeric(finish_tm)-as.numeric(leave_tm), 
              allow_cook=prereq-ride, #cooka=as.numeric(cookable_tm)-as.numeric(cook_tm), 
              left1=prereq-(prepare+ride)) #left3=prereq-(dish_longer*60 + ride), #left2=prereq-(cooka+ride), 
 
