@@ -50,11 +50,6 @@ write.csv(sup_data,'sup_list.csv')
 #===========================
 setwd('~/Google Drive/dwb/dwb_Data')
 sup_info <- read.csv('sup_info3.csv', stringsAsFactors = FALSE)
-#supplementing tag info (tags have all words inseparably tgt)
-addtag_a <- read.csv("sup_info.csv", stringsAsFactors = FALSE) %>% select(details:tag4)
-addtag_b <- read.csv("sup_info1b.csv", stringsAsFactors = FALSE) %>% select(details:tag4)
-addtag <- rbind(addtag_a, addtag_b)
-sup_info <- left_join(sup_info, addtag, by=c("sup_id", "from_addr", "from_tel", "details")) 
 
 temp <- sup_info
 temp$details <- sub('\n详情\n标签:','\n标签:', temp$details)
@@ -72,6 +67,14 @@ temp$from_tel[temp$from_tel==""] <- temp$from_.tel[temp$from_tel==""]
 temp$from_.tel <- NULL
 temp[,8:12] <- lapply(temp[,8:12],as.numeric)
 
+#supplementing tag info (tags have all words inseparably tgt)
+addtag_a <- read.csv("sup_info.csv", stringsAsFactors = FALSE) %>% select(details:tag4)
+addtag_b <- read.csv("sup_info1b.csv", stringsAsFactors = FALSE) %>% select(details:tag4)
+#tag missing since row500
+addtag <- rbind(addtag_a, addtag_b)
+addtag <- addtag[!is.na(addtag$tag1),]
+temp <- left_join(temp, addtag, by=c("sup_id", "from_addr", "from_tel", "details")) #, "details"
+
 # ready for merging back (not yet manually checking which is the best)
 df <- temp
 df$adist_long <- diag(adist((df$from_addr), (df$from_addr_xms)) / 
@@ -86,7 +89,7 @@ df <- df[!duplicated(select(df, sup_id, from_tel, from_addr,from_addr_xms)),]
 
 
 
-#===Manual filter====================================
+#===Manual check====================================
 #manual <- function(id_tel_addr) {
 #  drop <- c()
 #  #count <- 0
