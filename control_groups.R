@@ -96,26 +96,11 @@ table(df_all$require_tmref)
 
 # require time is a bucket of values 
 df_all <- df_all %>% 
-  mutate(tmref_cat = as.character(require_tmref),
-         tmref_cat = case_when(tmref_cat == "11.5" ~ "lunch",
-                               tmref_cat == "12" ~ "lunch",
-                               tmref_cat == "12.5" ~ "lunch",
-                               tmref_cat == "13" ~ "lunch",
-                               tmref_cat == "13.5" ~ "lunch",
-                               tmref_cat == "14" ~ "lunch",
-                               tmref_cat == "14.5" ~ "lunch",
-                               tmref_cat == "17.5" ~ "dinner",
-                               tmref_cat == "18" ~ "dinner",
-                               tmref_cat == "18.5" ~ "dinner",
-                               tmref_cat == "19" ~ "dinner",
-                               tmref_cat == "19.5" ~ "dinner",
-                               tmref_cat == "20" ~ "dinner",
-                               tmref_cat == "20.5" ~ "dinner",
+  mutate(tmref_cat = case_when(require_tmref >= 11.5 &  require_tmref <= 14.5 ~ "lunch",
+                               require_tmref >= 17.5 &  require_tmref <= 20.5 ~ "lunch",
                                TRUE ~ "other"))
 
 prop.table(table(df_all$tmref_cat))
-
-
 
 ######User experiance
 df_all %>% select(left1, require_tmref, user_exp, u_price_avg) %>% 
