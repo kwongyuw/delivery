@@ -132,12 +132,19 @@ table(crt_df$left_20)
 
 ####SEE comparison of 20min leftover 
 crt_df %>%
-  select(u_price_avg, time, user_exp, dist) %>%
+  select(u_price_avg, tmref_cat,time, user_exp, dist) %>%
   summary()
 
 crt_df %>%
   select(left_20, u_price_avg, time, user_exp, dist) %>%
   group_by(left_20) %>%
   summarise_all(funs(median))
+
+crt_df %>%
+  select(left_20,tmref_cat) %>%
+  group_by(left_20, tmref_cat) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n/sum(n))
+
 
 
