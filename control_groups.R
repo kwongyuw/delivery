@@ -39,4 +39,120 @@ df_feat <- read.csv(file.path(data_dir ,'data_derived.csv'), stringsAsFactors = 
 #join
 df_all <- left_join(df_all , df_feat, by='id')
 
+# prereq is a raw time value 
+df_all %>% 
+  mutate(prereq_m = prereq/60) %>%
+  select(prereq_m) %>%
+  filter(prereq_m >= 0 & prereq_m < 500) %>%
+  ggplot(., aes(x=prereq_m)) + 
+  geom_histogram(stat = "count")
+
+
+df_all %>% mutate(prereq_m = prereq/60) %>% 
+  select(prereq_m) %>%
+  filter(prereq_m > 39 & prereq_m < 41) %>%
+  ggplot(., aes(x=prereq_m)) + 
+  geom_histogram(stat = "count")
+
+
+df_all %>% mutate(prereq_m = prereq/60) %>%
+  select(prereq_m) %>%
+  filter(prereq_m >= 0 & prereq_m <= 40) %>%
+  ggplot(., aes(x=prereq_m)) + 
+  geom_histogram(stat = "count")
+#######
+# left over time is calculated after subtracting cooking time and travel time from prereq
+names(df_all)
+
+df_all %>% select(left1) %>% 
+  mutate(left_m = left1/60) %>%
+  filter(left_m >= 0 & left_m < 60) %>% 
+  ggplot(., aes(x=left_m)) + 
+  geom_histogram(stat = "count")
+
+df_all <- df_all %>% 
+  mutate(left_m = left1/60,
+         left_20 = ifelse(left_m >= 20, 1, 0))
+
+sum(is.na(df_all$prereq))
+sum(is.na(df_all$left1))
+table(df_all$left_20)
+##### Look at descriptives for features 
+
+df_all %>% select(require_tm, require_tmref,user_exp, u_price_avg, left_m) %>%
+  summary(.)
+
+summary(df_all$left_m)
+
+df_all %>% select(left1, require_tmref) %>% 
+  mutate(left_m = left1/60) %>% 
+  filter(left_m >= 0 & left_m < 60) %>% 
+  ggplot(., aes(x=require_tmref)) + 
+  geom_histogram(stat = "count")
+
+ summary(df_all$require_tmref)
+
+table(df_all$require_tmref)
+
+# require time is a bucket of values 
+df_all <- df_all %>% 
+  mutate(tmref_cat = as.character(require_tmref),
+         tmref_cat = case_when(tmref_cat == "11.5" ~ "lunch",
+                               tmref_cat == "12" ~ "lunch",
+                               tmref_cat == "12.5" ~ "lunch",
+                               tmref_cat == "13" ~ "lunch",
+                               tmref_cat == "13.5" ~ "lunch",
+                               tmref_cat == "14" ~ "lunch",
+                               tmref_cat == "14.5" ~ "lunch",
+                               tmref_cat == "17.5" ~ "dinner",
+                               tmref_cat == "18" ~ "dinner",
+                               tmref_cat == "18.5" ~ "dinner",
+                               tmref_cat == "19" ~ "dinner",
+                               tmref_cat == "19.5" ~ "dinner",
+                               tmref_cat == "20" ~ "dinner",
+                               tmref_cat == "20.5" ~ "dinner",
+                               TRUE ~ "other"))
+
+prop.table(table(df_all$tmref_cat))
+
+
+
+######User experiance
+df_all %>% select(left1, require_tmref, user_exp, u_price_avg) %>% 
+  filter(user_exp < 200) %>%
+  ggplot(., aes(x=user_exp)) + 
+  geom_histogram(stat = "count")
+
+#
+df_all %>% select(left1, require_tmref, user_exp, u_price_avg) %>% 
+  mutate(left_m = left1/60) %>%
+  filter(left_m >= 0 & left_m < 60) %>% 
+  filter(user_exp < 200) %>% nrow()
+
+df_all %>% nrow()
+
+### Do proper subsets 
+crt_df <- df_all %>%
+  filter(prereq >2400 & prereq < 3600,
+        left_m >= -120 & left_m < 120,
+         dist <= 140000,
+         user_exp < 200)
+
+ggplot(crt_df, aes(x=left_m)) + 
+  geom_histogram(stat = "count")
+
+summary(crt_df$left_m)
+
+table(crt_df$left_20)
+
+####SEE comparison of 20min leftover 
+crt_df %>%
+  select(u_price_avg, time, user_exp, dist) %>%
+  summary()
+
+crt_df %>%
+  select(left_20, u_price_avg, time, user_exp, dist) %>%
+  group_by(left_20) %>%
+  summarise_all(funs(median))
+
 
