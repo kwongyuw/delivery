@@ -5,7 +5,8 @@ library(stringr)
 library(openxlsx)
 library(data.table)
 
-source('/Users/kwongyu/Google Drive/dwb/cred.txt')
+#source('/Users/kwongyu/Google Drive/dwb/cred.txt')
+source('~/Google Drive/dwb/cred.txt')
 # source('~/Documents/eScience/projects/delivery/baidu_geo_func.R')
 
 
@@ -36,25 +37,27 @@ df_from <- fread(file = '/Users/kwongyu/Google Drive/dwb/dwb_Data/data_full_from
 df_to <- fread(file = '/Users/kwongyu/Google Drive/dwb/dwb_Data/data_full.csv', 
                na.strings = c(""),
                stringsAsFactors = F)
+
 ### create df of vendor and individual addresses by userID
 
 names(df_to)
 names(df_from)
 
 df_ocords <- df_to %>%
-  select(id, LAT, LON) %>%
-  mutate(o_cords = paste(LAT, LON, sep = ",")) %>%
-  select(-LAT,-LON)
+              select(id, LAT, LON) %>%
+              mutate(o_cords = paste(LAT, LON, sep = ",")) %>%
+              select(-LAT,-LON)
 
 df_dcords <- df_from %>%
-  select(id, LAT, LON) %>%
-  mutate(d_cords = paste(LAT, LON, sep = ",")) %>%
-  select(-LAT,-LON)
+              select(id, LAT, LON) %>%
+              mutate(d_cords = paste(LAT, LON, sep = ",")) %>%
+              select(-LAT,-LON)
 
 df <- inner_join(df_ocords,df_dcords, by = c("id"))
+              
 
+df <- df %>% slice(299981:329980) #you can change to 30,000 for each run 
 
-df <- df %>% slice(419981:444735) #you can change to 30,000 for each run 
 #Initialize
 df$dist<-NA
 df$dist_txt<-NA
@@ -76,7 +79,6 @@ for(i in 1:nrow(df)){
   
   if ((i %% 100) ==0) cat(paste(i," "))
   if (i == nrow(df)) cat("Done!\n")
-  
 }
 
 write.csv(df, 'dist15.csv')
