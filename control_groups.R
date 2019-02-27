@@ -97,7 +97,7 @@ table(df_all$require_tmref)
 # require time is a bucket of values 
 df_all <- df_all %>% 
   mutate(tmref_cat = case_when(require_tmref >= 11.5 &  require_tmref <= 14.5 ~ "lunch",
-                               require_tmref >= 17.5 &  require_tmref <= 20.5 ~ "lunch",
+                               require_tmref >= 17.5 &  require_tmref <= 20.5 ~ "dinner",
                                TRUE ~ "other"))
 
 prop.table(table(df_all$tmref_cat))
@@ -152,6 +152,22 @@ crt_df %>%
   group_by(left_20, tmref_cat) %>%
   summarise(n = n()) %>%
   mutate(prop = n/sum(n))
+
+#traffic condition? (tamed by the time in gettin & giving food)
+crt_df %>%
+  select(require_tmref, ride,time) %>%
+  group_by(require_tmref) %>%
+  mutate(traffic = median(ride/time))%>%
+  ggplot(., aes(x=require_tmref, y=traffic)) +
+  geom_point() + coord_cartesian(ylim=c(0,20))
+
+#system pressure
+crt_df %>% 
+  select(require_tmref, require_date, ow_ratio) %>%
+  group_by(require_tmref, require_date) %>% summarise(sys_pressure=mean(ow_ratio)) %>%
+  ggplot(aes(x=require_tmref,y=sys_pressure)) + 
+  geom_point(size=0.1, alpha=0.3) + coord_cartesian(ylim=c(0,2.5))
+
 #############
 ## outcome 
 crt_df %>% 
