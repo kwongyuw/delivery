@@ -10,7 +10,8 @@ library(caret)
 
 #path to read data files
 setwd("/Users/kwongyu/Google Drive/dwb/dwb_Data")
-df_DEst <- read.csv('data.csv', stringsAsFactors = FALSE) %>% #only focus on the best subset
+#df_DEst <- read.csv('data.csv', stringsAsFactors = FALSE) %>% #only focus on the best subset
+df_DEst <- df_all %>%
   select(id:sup_id, place_tm, require_tm, finish_tm, rider_income, price, name, from_addr_xms:service, from_addr, tag1:tag4)
 #take Sept 3rd as example, 437 sup ordered >=5 times account for ~70%(4067/6448), 1119 sups >=2 times ~90%(5967/6448)
 #still need to 400+ restaurants (300+ even with only restaurant w/ info)
