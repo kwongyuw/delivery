@@ -86,7 +86,8 @@ alt_tobind <- mutate(alt, sup_id = asup_id, name=aname,
 df_log <- bind_rows(test,alt_tobind) 
 clean_choice <- group_by(df_log, id) %>%
   summarize(n=n()) %>% filter(n>1)
-df_log <- filter(df_log, id %in% clean_choice$id)
+df_log <- filter(df_log, id %in% clean_choice$id) %>%
+  arrange(id)
   
 reg <- glm(chosen ~ taste + envir + service + avgexp*u_price_avg, data=df_log, family=binomial)
 summary(reg)
@@ -94,12 +95,23 @@ df_log$fit <- reg$fitted.values
 df_log$resid <- reg$residuals
 
 sth <- sample(df_log$id,5)
-play <- filter(df_log, id %in% sth) %>% arrange(id)
-select(play, id, user_id, taste:service, resid, fit, chosen, name)
-play$utility <- reg$coef[1] + t((reg$coef[2:4]) %*% t(select(play, taste:service))) + (reg$coef[5]*play$avgexp + reg$coef[6]*play$u_price_avg) + reg$coef[7]*play$avgexp*play$u_price_avg
-select(play, id, taste:service, avgexp, resid, utility, fit, chosen, name)
+#play <- filter(df_log, id %in% sth) %>% arrange(id)
+#select(play, id, user_id, taste:service, resid, fit, chosen, name)
+#play$utility <- reg$coef[1] + t((reg$coef[2:4]) %*% t(select(play, taste:service))) + 
+#  (reg$coef[5]*play$avgexp + reg$coef[6]*play$u_price_avg) + reg$coef[7]*play$avgexp*play$u_price_avg +
+#  play$resid
+#select(play, id, taste:service, avgexp, resid, utility, fit, chosen, name)
 
-
+df_log <- df_log %>%
+  mutate(Eu = reg$coef[1] + t((reg$coef[2:4]) %*% t(select(df_log, taste:service))) + 
+  (reg$coef[5]*df_log$avgexp + reg$coef[6]*df_log$u_price_avg) + reg$coef[7]*df_log$avgexp*df_log$u_price_avg,
+  u = Eu + resid) %>%
+  group_by(id) %>% mutate(Eu_avg=mean(Eu), u_avg=mean(u)) %>% 
+  ungroup() %>% arrange(id)
+#select(df_log, id, taste:service, avgexp, resid, Eu, u, fit, chosen, name) %>%
+#  filter(id %in% sth) %>% arrange(id)
+select(df_log, id, Eu, u, Eu_avg, u_avg) %>%
+  filter(id %in% sth) 
 
 
 
