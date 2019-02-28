@@ -18,12 +18,13 @@ df_DEst <- df_all %>%
 oneday <- filter(df_DEst, day(df_DEst$require_tm)==3, month(df_DEst$require_tm)==9)
 #test <- oneday %>% add_count(sup_id, sort=TRUE)
 test <- group_by(oneday,sup_id, name) %>% 
-  summarize(n=n(), taste=first(taste), envir=first(envir), service=first(service), avgexp_lo=first(avgexp_lo), avgexp_up=first(avgexp_up), 
+  summarize(n=n(), taste=first(taste), envir=first(envir), service=first(service), 
+            avgexp_lo=first(avgexp_lo), avgexp_up=first(avgexp_up), avgexp=(avgexp_lo+avgexp_up)/2,
             tag1 = first(tag1), tag2=first(tag2), tag3=first(tag3), tag4=first(tag4), 
             tag_cnfast = (tag1=="中式快餐简餐"), tag_jp = (tag1==("日本菜")|tag1==("寿司")), tag_snack=(tag1=="甜点饮品"),
             actexp = mean(price+rider_income)/100, avgfee=mean(rider_income)/100, avgdist=mean(dist)) %>% 
   arrange(desc(n)) %>% ungroup()
-test <- mutate(test, avgexp=(avgexp_lo+avgexp_up)/2, size=sum(test$n), shares=n/size)
+test <- mutate(test, size=sum(test$n), shares=n/size)
 #tag1 into all dummys
 #test <- filter(test, !is.na(tag1)) # check the availability of tag1 scraped
 #dmy <- dummyVars(test %>% select(tag1), data=test)
@@ -43,28 +44,60 @@ df_all <- arrange(df_all, place_tm) %>%
   #past average
 
 #logit
-test <- select(df_all, id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm,
-               taste, envir, service, avgexp_lo, avgexp_up, tag1:tag4, u_price_avg, u_price_sd) %>%
-        filter(u_n_tt>1) %>% mutate(chosen=1)
+test <- select(ungroup(df_all), id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm,
+               taste, envir, service, avgexp_lo, avgexp_up, tag1:tag4, u_price_avg, u_price_sd,
+               from_tel, from_addr) %>%
+        filter(u_n_tt>1) %>% mutate(chosen=1, avgexp = (avgexp_lo+avgexp_up)/2)
 #summary(lm(shares ~ taste + envir + service + avgexp*tag_cnfast*tag_snack, data=test))
 #assume last diff store is the only alternative considered
 alt <- test %>%
         arrange(user_id, sup_id, finish_tm) %>%
-        mutate(chosen=0, asup_id=NA, aname=NA) #, asup_id=if_else(sup_id==lag(sup_id), aname=lag(name,ss+1)))
+        mutate(chosen=0, asup_id=NA, aname=NA, ass=NA, ass_b4=NA,
+               afrom_tel=NA, afrom_addr=NA) #, asup_id=if_else(sup_id==lag(sup_id), aname=lag(name,ss+1)))
 
 #for-looply matching each restaurant to last-ordered-diff restaurant
+tl = Sys.time()
 for (i in c(2:dim(alt)[1])) {
   ref <- i - (alt$ss[i] + 1)
-  if (i %% 100000 == 0) {cat(i)}
+  if (i %% 10000 == 0) {
+    cat(i)
+    cat(Sys.time() - tl)
+  }
+  alt$asup_id[i] = alt$sup_id[ref]
   alt$aname[i] = alt$name[ref]
+  #alt$afrom_tel[i] = alt$from_tel[ref]
+  #alt$afrom_addr[i] = alt$from_addr[ref]
+  #alt$ass[i] = alt$ss[ref]
+  #alt$ass_b4[i] = alt$ss_b4[ref]
 }
                
-        
+temp_sup <- select(test, sup_id, from_tel, from_addr, name, taste:tag4) %>%
+  unique()
 
+alt <- left_join(alt, temp_sup, by=c("asup_id"="sup_id", "afrom_tel"="from_tel", "afrom_addr"="from_addr"))
+alt_tobind <- mutate(alt, sup_id = asup_id, name=aname, 
+                     taste=taste.y, envir=envir.y, service=service.y,
+                     avgexp = avgexp.y, avgexp_lo=avgexp_lo.y, avgexp_up=avgexp_up.y, 
+                     tag1=tag1.y, tag2=tag2.y, tag3=tag3.y, tag4=tag4.y,
+                     ss=ss.y, ss_b4=ss_b4.y) %>%
+              select(id:finish_tm, taste:tag4, u_price_avg:chosen) %>%
+              filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
 
+df_log <- bind_rows(test,alt_tobind) 
+clean_choice <- group_by(df_log, id) %>%
+  summarize(n=n()) %>% filter(n>1)
+df_log <- filter(df_log, id %in% clean_choice$id)
+  
+reg <- glm(chosen ~ taste + envir + service + avgexp*u_price_avg, data=df_log, family=binomial)
+summary(reg)
+df_log$fit <- reg$fitted.values
+df_log$resid <- reg$residuals
 
-
-
+sth <- sample(df_log$id,5)
+play <- filter(df_log, id %in% sth) %>% arrange(id)
+select(play, id, user_id, taste:service, resid, fit, chosen, name)
+play$utility <- reg$coef[1] + t((reg$coef[2:4]) %*% t(select(play, taste:service))) + (reg$coef[5]*play$avgexp + reg$coef[6]*play$u_price_avg) + reg$coef[7]*play$avgexp*play$u_price_avg
+select(play, id, taste:service, avgexp, resid, utility, fit, chosen, name)
 
 
 
