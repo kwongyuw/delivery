@@ -19,14 +19,67 @@ oneday <- filter(df_DEst, day(df_DEst$require_tm)==3, month(df_DEst$require_tm)=
 #test <- oneday %>% add_count(sup_id, sort=TRUE)
 test <- group_by(oneday,sup_id, name) %>% 
   summarize(n=n(), taste=first(taste), envir=first(envir), service=first(service), avgexp_lo=first(avgexp_lo), avgexp_up=first(avgexp_up), 
-            tag1 = first(tag1), tag2=first(tag2), tag3=first(tag3), tag4=first(tag4),
-            actexp = mean(price+rider_income)/100, avgfee=mean(rider_income)/100) %>% 
+            tag1 = first(tag1), tag2=first(tag2), tag3=first(tag3), tag4=first(tag4), 
+            tag_cnfast = (tag1=="中式快餐简餐"), tag_jp = (tag1==("日本菜")|tag1==("寿司")), tag_snack=(tag1=="甜点饮品"),
+            actexp = mean(price+rider_income)/100, avgfee=mean(rider_income)/100, avgdist=mean(dist)) %>% 
   arrange(desc(n)) %>% ungroup()
 test <- mutate(test, avgexp=(avgexp_lo+avgexp_up)/2, size=sum(test$n), shares=n/size)
-test <- filter(test, !is.na(tag1)) # check the availability of tag1 scraped
-dmy <- dummyVars(test %>% select(tag1), data=test)
-test <- cbind(test, data.frame(predict(dmy, newdata = test)))
+#tag1 into all dummys
+#test <- filter(test, !is.na(tag1)) # check the availability of tag1 scraped
+#dmy <- dummyVars(test %>% select(tag1), data=test)
+#test <- cbind(test, data.frame(predict(dmy, newdata = test)))
 test <- filter(test, !is.na(avgexp_lo)) %>% filter(n>=5) #note: sum(test$share)!=1 aft filtering
+
+#logit or OLS
+# my choice of restaurant on  Xj: taste, envir, service, price lv, cuisine, expected delay, closeness(avgfee, close to other restaurants)
+#                             Xi: spending habit, cuisine habit, purchased before
+
+#purchased before
+df_all <- arrange(df_all, place_tm) %>%
+  group_by(user_id, sup_id, name) %>%
+  arrange(user_id, sup_id, finish_tm) %>%
+  mutate(ss_b4 = if_else(sup_id==lag(sup_id), 1, 0, missing=0), ss=cumsum(ss_b4)) %>%
+  group_by(user_id) %>% arrange(user_id, place_tm) %>%
+  #past average
+
+#logit
+test <- select(df_all, id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm,
+               taste, envir, service, avgexp_lo, avgexp_up, tag1:tag4, u_price_avg, u_price_sd) %>%
+        filter(u_n_tt>1) %>% mutate(chosen=1)
+#summary(lm(shares ~ taste + envir + service + avgexp*tag_cnfast*tag_snack, data=test))
+#assume last diff store is the only alternative considered
+alt <- test %>%
+        arrange(user_id, sup_id, finish_tm) %>%
+        mutate(chosen=0, asup_id=NA, aname=NA) #, asup_id=if_else(sup_id==lag(sup_id), aname=lag(name,ss+1)))
+
+#for-looply matching each restaurant to last-ordered-diff restaurant
+for (i in c(2:dim(alt)[1])) {
+  ref <- i - (alt$ss[i] + 1)
+  if (i %% 100000 == 0) {cat(i)}
+  alt$aname[i] = alt$name[ref]
+}
+               
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # BLP is feasible. work out logit on sup_char & ind_char first
 # (then affine transform to >= price+fee. move on to estimate cost of advanced order)
