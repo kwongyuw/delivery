@@ -44,7 +44,8 @@ df_all <- arrange(df_all, place_tm) %>%
   #past average
 
 #logit
-test <- select(ungroup(df_all), id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm,
+test <- select(ungroup(df_all), id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm, 
+               price, rider_income,
                taste, envir, service, avgexp_lo, avgexp_up, tag1:tag4, u_price_avg, u_price_sd,
                from_tel, from_addr) %>%
         filter(u_n_tt>1) %>% mutate(chosen=1, avgexp = (avgexp_lo+avgexp_up)/2)
@@ -106,12 +107,34 @@ df_log <- df_log %>%
   mutate(Eu = reg$coef[1] + t((reg$coef[2:4]) %*% t(select(df_log, taste:service))) + 
   (reg$coef[5]*df_log$avgexp + reg$coef[6]*df_log$u_price_avg) + reg$coef[7]*df_log$avgexp*df_log$u_price_avg,
   u = Eu + resid) %>%
-  group_by(id) %>% mutate(Eu_avg=mean(Eu), u_avg=mean(u)) %>% 
+  group_by(id) %>% mutate(Eu_avg=mean(Eu), u_avg=mean(u), Echosen = max(Eu), Echosen = (Eu==Echosen)) %>% 
   ungroup() %>% arrange(id)
+df_log$eps_sim <- NA
+#simulate logistic eps by order id s.t. 
+#chosen: Eu + eps_sim > alt: Eu + eps_sim using rlogis(dim(df_log)[1])
+
 #select(df_log, id, taste:service, avgexp, resid, Eu, u, fit, chosen, name) %>%
 #  filter(id %in% sth) %>% arrange(id)
-select(df_log, id, Eu, u, Eu_avg, u_avg) %>%
-  filter(id %in% sth) 
+filter(df_log, id %in% sth) %>%
+  select(id, Eu, u, Echosen, chosen, Eu_avg, u_avg) 
+  
+# 1/3 customers change choice IF before realizing shock
+#sum(df_log$Echosen * df_log$chosen)
+
+# log(p/(1-p)) = β0 + β1Χ -> fit=p which has not realized shock ε
+# so should use β0 + β1X + ε = 2.00xx or -2.00xx (i.e. u defined above)
+# assume MV = (1) f^u or (2) f*(e^u)
+#  find f s.t. MV(f) >= Price 
+# (try universal f -> user-specific f -> order-specific f)
+# still problematic: e^2.0/e^-2.0 = 54, as large as 60times diff
+
+#focus on util diff for now
+df_log <- df_log %>%
+  group_by(id) %>%
+  mutate(util_loss = sum(u*Echosen)-u, 
+         util_loss_sim = sum((Eu+eps_sim)*Echosen)-u)
+
+result <- filter(df_log, chosen==1)
 
 
 
