@@ -81,7 +81,7 @@ alt_tobind <- mutate(alt, sup_id = asup_id, name=aname,
                      avgexp = avgexp.y, avgexp_lo=avgexp_lo.y, avgexp_up=avgexp_up.y, 
                      tag1=tag1.y, tag2=tag2.y, tag3=tag3.y, tag4=tag4.y,
                      ss=ss.y, ss_b4=ss_b4.y) %>%
-              select(id:finish_tm, taste:tag4, u_price_avg:chosen) %>%
+              select(id:finish_tm, taste:tag4, avgexp, u_price_avg:chosen) %>%
               filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
 
 df_log <- bind_rows(test,alt_tobind) 
@@ -111,7 +111,27 @@ df_log <- df_log %>%
   ungroup() %>% arrange(id)
 df_log$eps_sim <- NA
 #simulate logistic eps by order id s.t. 
-#chosen: Eu + eps_sim > alt: Eu + eps_sim using rlogis(dim(df_log)[1])
+#chosen: Eu + eps_sim > alt: Eu + eps_sim using 
+tl <- Sys.time()
+count_id <- 0
+for (g in unique(df_log$id)) {
+  count_id <- count_id+1
+  if (count_id %% 10000 == 0) {
+    print(count_id)
+    print(Sys.time() - tl)
+  }
+  ref = which((df_log$id==g) & !(df_log$chosen))
+  ref_chosen = which((df_log$id==g) & (df_log$chosen))
+  df_log$eps_sim[c(ref,ref_chosen)] <- -df_log$Eu[c(ref,ref_chosen)]
+  count <- 0
+  while (df_log$eps_sim[ref_chosen] + df_log$Eu[ref_chosen] 
+         <= max(df_log$eps_sim[ref]+df_log$Eu[ref])) {
+    count = count+1
+    cat(count)
+    df_log$eps_sim[c(ref,ref_chosen)] <- rlogis(length(c(ref,ref_chosen)))
+  }
+}  
+  
 
 #select(df_log, id, taste:service, avgexp, resid, Eu, u, fit, chosen, name) %>%
 #  filter(id %in% sth) %>% arrange(id)
