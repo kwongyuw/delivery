@@ -63,28 +63,30 @@ for (i in c(2:dim(alt)[1])) {
   if (i %% 10000 == 0) {
     cat(i)
     cat(Sys.time() - tl)
+    write.csv(alt[1:i,],"alt_for.csv")
   }
   alt$asup_id[i] = alt$sup_id[ref]
   alt$aname[i] = alt$name[ref]
-  #alt$afrom_tel[i] = alt$from_tel[ref]
-  #alt$afrom_addr[i] = alt$from_addr[ref]
-  #alt$ass[i] = alt$ss[ref]
-  #alt$ass_b4[i] = alt$ss_b4[ref]
+  alt$afrom_tel[i] = alt$from_tel[ref]
+  alt$afrom_addr[i] = alt$from_addr[ref]
+  alt$ass[i] = alt$ss[ref]
+  alt$ass_b4[i] = alt$ss_b4[ref]
 }
                
-temp_sup <- select(test, sup_id, from_tel, from_addr, name, taste:tag4) %>%
+temp_sup <- select(test, sup_id, from_tel, from_addr, name, taste:tag4, avgexp) %>%
   unique()
 
-alt <- left_join(alt, temp_sup, by=c("asup_id"="sup_id", "afrom_tel"="from_tel", "afrom_addr"="from_addr"))
-alt_tobind <- mutate(alt, sup_id = asup_id, name=aname, 
+alt <- left_join(alt, temp_sup, by=c("asup_id"="sup_id", "aname"="name", "afrom_tel"="from_tel", "afrom_addr"="from_addr"))
+alt_tobind <- mutate(alt, sup_id = asup_id, name=aname, from_tel=afrom_tel, from_addr=afrom_addr,
                      taste=taste.y, envir=envir.y, service=service.y,
                      avgexp = avgexp.y, avgexp_lo=avgexp_lo.y, avgexp_up=avgexp_up.y, 
                      tag1=tag1.y, tag2=tag2.y, tag3=tag3.y, tag4=tag4.y,
-                     ss=ss.y, ss_b4=ss_b4.y) %>%
+                     ss=ass, ss_b4=ass_b4) %>%
               select(id:finish_tm, taste:tag4, avgexp, u_price_avg:chosen) %>%
               filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
 
-df_log <- bind_rows(test,alt_tobind) 
+df_log <- bind_rows(test,alt_tobind)  %>%
+  filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
 clean_choice <- group_by(df_log, id) %>%
   summarize(n=n()) %>% filter(n>1)
 df_log <- filter(df_log, id %in% clean_choice$id) %>%
@@ -109,10 +111,27 @@ df_log <- df_log %>%
   u = Eu + resid) %>%
   group_by(id) %>% mutate(Eu_avg=mean(Eu), u_avg=mean(u), Echosen = max(Eu), Echosen = (Eu==Echosen)) %>% 
   ungroup() %>% arrange(id)
-df_log$eps_sim <- NA
+
 #simulate logistic eps by order id s.t. 
 #chosen: Eu + eps_sim > alt: Eu + eps_sim using 
+df_log$eps_sim <- rlogis(dim(df_log)[1])
 tl <- Sys.time()
+while (dim(df_resim)[1] > 0) {
+  df_resim <- df_log
+  resim_check <- df_resim %>% group_by(id) %>% 
+    summarize(chosen_u = max(chosen*(Eu + eps_sim)), 
+              alt_u = max((1-chosen)*(Eu + eps_sim))) %>%
+    filter(chosen_u<alt_u)
+  if (!(length(resim_check$id) > 1)) {
+    break
+    df_log <- filter(df_log, !(id %in% resim_check$id))
+    }
+  df_resim <- filter(df_log, id %in% resim_check$id)
+  df_log$eps_sim[which(df_log$id %in% resim_check$id)] <- rlogis(dim(df_resim)[1])
+  print(length(resim_check$id))
+}
+print(Sys.time() - tl)
+
 count_id <- 0
 for (g in unique(df_log$id)) {
   count_id <- count_id+1
@@ -122,7 +141,6 @@ for (g in unique(df_log$id)) {
   }
   ref = which((df_log$id==g) & !(df_log$chosen))
   ref_chosen = which((df_log$id==g) & (df_log$chosen))
-  df_log$eps_sim[c(ref,ref_chosen)] <- -df_log$Eu[c(ref,ref_chosen)]
   count <- 0
   while (df_log$eps_sim[ref_chosen] + df_log$Eu[ref_chosen] 
          <= max(df_log$eps_sim[ref]+df_log$Eu[ref])) {
