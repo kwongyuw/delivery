@@ -132,23 +132,6 @@ while (dim(df_resim)[1] > 0) {
 }
 print(Sys.time() - tl)
 
-count_id <- 0
-for (g in unique(df_log$id)) {
-  count_id <- count_id+1
-  if (count_id %% 10000 == 0) {
-    print(count_id)
-    print(Sys.time() - tl)
-  }
-  ref = which((df_log$id==g) & !(df_log$chosen))
-  ref_chosen = which((df_log$id==g) & (df_log$chosen))
-  count <- 0
-  while (df_log$eps_sim[ref_chosen] + df_log$Eu[ref_chosen] 
-         <= max(df_log$eps_sim[ref]+df_log$Eu[ref])) {
-    count = count+1
-    cat(count)
-    df_log$eps_sim[c(ref,ref_chosen)] <- rlogis(length(c(ref,ref_chosen)))
-  }
-}  
   
 
 #select(df_log, id, taste:service, avgexp, resid, Eu, u, fit, chosen, name) %>%
