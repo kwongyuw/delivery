@@ -51,28 +51,30 @@ test <- select(ungroup(df_all), id, user_id, sup_id, name, ss, ss_b4, user_exp, 
         filter(u_n_tt>1) %>% mutate(chosen=1, avgexp = (avgexp_lo+avgexp_up)/2)
 #summary(lm(shares ~ taste + envir + service + avgexp*tag_cnfast*tag_snack, data=test))
 #assume last diff store is the only alternative considered
-alt <- test %>%
-        arrange(user_id, sup_id, finish_tm) %>%
-        mutate(chosen=0, asup_id=NA, aname=NA, ass=NA, ass_b4=NA,
-               afrom_tel=NA, afrom_addr=NA) #, asup_id=if_else(sup_id==lag(sup_id), aname=lag(name,ss+1)))
-
+alt <- read.csv("alt_for.csv", stringsAsFactors = FALSE)
+#===========4 HOURS to run raw========================
+#alt <- test %>%
+#        arrange(user_id, sup_id, finish_tm) %>%
+#        mutate(chosen=0, asup_id=NA, aname=NA, ass=NA, ass_b4=NA,
+#               afrom_tel=NA, afrom_addr=NA) #, asup_id=if_else(sup_id==lag(sup_id), aname=lag(name,ss+1)))
 #for-looply matching each restaurant to last-ordered-diff restaurant
-tl = Sys.time()
-for (i in c(2:dim(alt)[1])) {
-  ref <- i - (alt$ss[i] + 1)
-  if (i %% 10000 == 0) {
-    cat(i)
-    cat(Sys.time() - tl)
-    write.csv(alt[1:i,],"alt_for.csv")
-  }
-  alt$asup_id[i] = alt$sup_id[ref]
-  alt$aname[i] = alt$name[ref]
-  alt$afrom_tel[i] = alt$from_tel[ref]
-  alt$afrom_addr[i] = alt$from_addr[ref]
-  alt$ass[i] = alt$ss[ref]
-  alt$ass_b4[i] = alt$ss_b4[ref]
-}
-               
+#tl = Sys.time()
+#for (i in c(2:dim(alt)[1])) {
+#  ref <- i - (alt$ss[i] + 1)
+#  if (i %% 10000 == 0) {
+#    cat(i)
+#    cat(Sys.time() - tl)
+#    write.csv(alt[1:i,],"alt_for.csv")
+#  }
+#  alt$asup_id[i] = alt$sup_id[ref]
+#  alt$aname[i] = alt$name[ref]
+#  alt$afrom_tel[i] = alt$from_tel[ref]
+#  alt$afrom_addr[i] = alt$from_addr[ref]
+#  alt$ass[i] = alt$ss[ref]
+#  alt$ass_b4[i] = alt$ss_b4[ref]
+#}
+#===========4 HOURS to run raw========================
+
 temp_sup <- select(test, sup_id, from_tel, from_addr, name, taste:tag4, avgexp) %>%
   unique()
 
@@ -107,11 +109,8 @@ sth <- sample(df_log$id,5)
 
 df_log <- df_log %>%
   mutate(Eu = reg$coef[1] + t((reg$coef[2:4]) %*% t(select(df_log, taste:service))) + 
-  (reg$coef[5]*df_log$avgexp + reg$coef[6]*df_log$u_price_avg) + reg$coef[7]*df_log$avgexp*df_log$u_price_avg,
-  u = Eu + resid) %>%
-  group_by(id) %>% mutate(Eu_avg=mean(Eu), u_avg=mean(u), Echosen = max(Eu), Echosen = (Eu==Echosen)) %>% 
-  ungroup() %>% arrange(id)
-
+  (reg$coef[5]*df_log$avgexp + reg$coef[6]*df_log$u_price_avg) + reg$coef[7]*df_log$avgexp*df_log$u_price_avg)
+  
 #simulate logistic eps by order id s.t. 
 #chosen: Eu + eps_sim > alt: Eu + eps_sim using 
 df_log$eps_sim <- rlogis(dim(df_log)[1])
@@ -132,16 +131,27 @@ while (dim(df_resim)[1] > 0) {
 }
 print(Sys.time() - tl)
 
-  
-
-#select(df_log, id, taste:service, avgexp, resid, Eu, u, fit, chosen, name) %>%
-#  filter(id %in% sth) %>% arrange(id)
-filter(df_log, id %in% sth) %>%
-  select(id, Eu, u, Echosen, chosen, Eu_avg, u_avg) 
-  
+#Utility comparison using logistic (mean=0, sd=1) simulation
+#(focus on util diff for now)
+df_log <- mutate(df_log, u = Eu + eps_sim) %>%
+  group_by(id) %>% 
+  mutate(Eu_avg=mean(Eu), u_avg=mean(u), Echosen = max(Eu), Echosen = (Eu==Echosen),
+         util_loss = sum(u*Echosen)-u) %>% 
+  ungroup() %>% arrange(id)
 # 1/3 customers change choice IF before realizing shock
 #sum(df_log$Echosen * df_log$chosen)
 
+filter(df_log, id %in% sth) %>%
+  select(id, Eu, eps_sim, u, Echosen, chosen, util_loss,Eu_avg, u_avg) 
+  
+result <- filter(df_log, chosen==1)
+#assuming stdd logistic uncertainty, 
+#util loss ranges from -2.4(25p) to -0.1(75p)
+summary(filter(result, util_loss!=0)$util_loss)
+g_loss <- ggplot(filter(result, util_loss!=0), aes(x=util_loss)) + 
+          stat_bin(binwidth = 0.1) + coord_cartesian(xlim=c(-10,6))
+
+#monetary estimate
 # log(p/(1-p)) = β0 + β1Χ -> fit=p which has not realized shock ε
 # so should use β0 + β1X + ε = 2.00xx or -2.00xx (i.e. u defined above)
 # assume MV = (1) f^u or (2) f*(e^u)
@@ -149,13 +159,20 @@ filter(df_log, id %in% sth) %>%
 # (try universal f -> user-specific f -> order-specific f)
 # still problematic: e^2.0/e^-2.0 = 54, as large as 60times diff
 
-#focus on util diff for now
-df_log <- df_log %>%
-  group_by(id) %>%
-  mutate(util_loss = sum(u*Echosen)-u, 
-         util_loss_sim = sum((Eu+eps_sim)*Echosen)-u)
+#(TOTAL NON-SENSE) 
+#result$f <- ((result$price/100)^(1/result$u))
+#df_log <- left_join(df_log, select(result, id, f), by="id")
+#df_log$p_sim <- df_log$f ^ df_log$u
+#try fixing -> still weird once f switched btw >1 and <1
+result$f2 <- (((result$price/100)/result$avgexp)^(result$u)) 
+# shd be ^1/u not ^u, but f2 is around 1, so sensitive to power fcn-form indeed
+df_log <- left_join(df_log, select(result, id, f2), by="id")
+df_log$p_sim2 <- (df_log$f2 ^ (1/df_log$u))*df_log$avgexp
+print(head(select(df_log, id, u, taste, envir, service, avgexp, price, f2, p_sim2),20))
+print(format(head(df_log$p_sim,20),scientific=FALSE))
 
-result <- filter(df_log, chosen==1)
+
+
 
 
 
