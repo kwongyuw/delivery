@@ -1,4 +1,5 @@
 library(tidyverse)
+library(clValid)
 
 user <- group_by(crt_df, user_id) %>%
   arrange(user_id, finish_tm) %>%
@@ -23,9 +24,11 @@ dist_mat <- dist(user_sc, method="euclidean")
 hclust_avg <- hclust(dist_mat, method='average')
 plot(hclust_avg, labels=FALSE)
 rect.hclust(hclust_avg , k = 10, border = 2:6)
-cut_avg <- cutree(hclust_avg, k = 10)
+cut_avg <- cutree(hclust_avg, k = 10) 
 small_cl <- mutate(small, hie_cl = cut_avg)
 count(small_cl,hie_cl)
+#dunn(cluster=small_cl$hie_cl, Data=small_cl)
+#k=4: 0.0013 vs k=10: 0.0003
 
 kmean_cl <- kmeans(user_sc, 10)
 small_cl$kme_cl <- kmean_cl$cluster
