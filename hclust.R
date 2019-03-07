@@ -6,14 +6,15 @@ user <- group_by(crt_df, user_id) %>%
   summarize(u_n_tt=n(), u_rinc_avg=mean(rider_income, na.rm=TRUE), u_rinc_sd=sd(rider_income),
             u_req_avg=mean(as.numeric(require_tm)), u_req_sd=sd(require_tm),
             u_price_avg=mean(price), u_price_sd=sd(price), u_span=max(as.numeric(finish_tm))-min(as.numeric(place_tm)))
+user <- filter(user, u_n_tt<=10, u_rinc_avg<1100, u_price_avg<10000)
 
 sum(is.na(user$u_rinc_avg))
 user$u_rinc_sd <- NULL
 user$u_req_sd <- NULL
 user$u_price_sd <- NULL
+user$u_span <- NULL
 
 any(is.na(user))
-user <- filter(user, !is.na(u_span), u_n_tt<=100)
 
 
 set.seed(715)
