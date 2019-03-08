@@ -40,7 +40,8 @@ df_all <- left_join(df_all , df_feat, by='id')
 #######
 # left over time is calculated after subtracting cooking time and travel time from prereq
 df_all <- df_all %>% 
-  mutate(left_m = left1/60,
+  mutate(left_m = left1/60, 
+         left2 = prereq - (prepare+time), left2_m = left2/60,
          left_20 = ifelse(left_m >= 20, 1, 0))
 
 sum(is.na(df_all$prereq))
@@ -58,10 +59,12 @@ prop.table(table(df_all$tmref_cat))
 
 ### Do proper subsets 
 crt_df <- df_all %>%
-  filter(prereq > 2100 & prereq < 3600,
-         left_m >= -120 & left_m < 120,
-         dist <= 140000,
-         user_exp < 200)
+  filter(delay <6000, prereq > 0 & prereq < 6000, #prereq>2100, prereq<3600
+         left_m < 240,
+         price <= 15000, paid <= 15000, rider_income <= 1300,
+         ride <= 1500, dist <= 140000, time <= 200,
+         user_exp < 75, u_price_avg<15000,
+         !is.infinite(ow_ratio), ow_ratio<3)
 
 rm(a_df)
 rm(df_feat)

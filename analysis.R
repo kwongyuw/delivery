@@ -2,14 +2,20 @@
 library(caret)
 # install.packages("Matching", dependencies=TRUE)
 library(Matching)
+library(tidyverse)
+# detach("package::tidyverse", unload=TRUE)
 
 source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 names(crt_df)
 
+
 # create model matrix (ADD VARIABLES HERE)
 model <- crt_df %>% 
-  select(delay, left_20, left_m, u_price_avg, tmref_cat,time, user_exp, dist) %>%
-  mutate(left_20 = as.factor(left_20))# add covariates
+  dplyr::select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_m,
+                u_price_avg, tmref_cat,
+                time, user_exp, dist, price, rider_income, paid, 
+                ow_ratio, u_lunch_avg) %>%
+  mutate(left_20 = as.factor(left_20), paid_ratio=paid/price)# add covariates
 
 summary(model)
 
@@ -26,7 +32,10 @@ fullR_dmy <- data.frame(predict(dmy, newdata = model)) %>% na.omit()
 # selct your model formula
 names(fullR_dmy)
 
-model_1 <- formula(delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist)
+play <- sample_n(model,100)
+pairs(dplyr::select(play, delay, prereq, left_m, left2_m, ride), cex=0.1)
+model_1 <- formula(delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + 
+                     time + user_exp + dist)
 
 simple <- lm(model_1, data = fullR_dmy)
 
