@@ -15,7 +15,8 @@ model <- crt_df %>%
                 u_price_avg, tmref_cat,
                 time, user_exp, dist, price, rider_income, paid, 
                 ow_ratio, u_lunch_avg) %>%
-  mutate(left_20 = as.factor(left_20), paid_ratio=paid/price)# add covariates
+  mutate(left_20 = as.factor(left_20), complic = ifelse(time>0, ride/time,NA),
+         paid_ratio=ifelse(price>=paid, paid/price, NA))# add covariates
 
 summary(model)
 
@@ -34,13 +35,20 @@ names(fullR_dmy)
 
 play <- sample_n(model,100)
 pairs(dplyr::select(play, delay, prereq, left_m, left2_m, ride), cex=0.1)
-model_1 <- formula(delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + 
-                     time + user_exp + dist)
+model_1 <- formula(delay ~ prereq +prepare+price + tmref_catlunch + tmref_catother + 
+                     user_exp + ow_ratio + rider_income*complic*dist)
 
 simple <- lm(model_1, data = fullR_dmy)
 
 summary(simple)
 plot(simple)
+
+lm1 <- lm(delay ~ prereq +price + tmref_catlunch + tmref_catother, data=fullR_dmy)
+lm2 <- lm(delay ~ prereq +prepare +price + tmref_catlunch + tmref_catother, data=fullR_dmy)
+lm3 <- lm(delay ~ prereq +prepare +price + tmref_catlunch + tmref_catother + user_exp + ow_ratio + rider_income, data=fullR_dmy)
+lm4 <- lm(delay ~ prereq +prepare +price + tmref_catlunch + tmref_catother + user_exp + ow_ratio + rider_income*complic*dist, data=fullR_dmy)
+stargazer(lm1, lm2, lm3, lm4, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
+
 # have some outliers 
 ########## Robust
 library(MASS)
