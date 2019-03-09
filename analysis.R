@@ -33,8 +33,8 @@ fullR_dmy <- data.frame(predict(dmy, newdata = model)) %>% na.omit()
 # selct your model formula
 names(fullR_dmy)
 
-play <- sample_n(model,100)
-pairs(dplyr::select(play, delay, prereq, left_m, left2_m, ride), cex=0.1)
+play <- sample_n(model,1000)
+pairs(dplyr::select(play, delay, prereq, left2_m, prepare, ride), cex=0.1)
 model_1 <- formula(delay ~ prereq +prepare+price + tmref_catlunch + tmref_catother + 
                      user_exp + ow_ratio + rider_income*complic*dist)
 

@@ -86,6 +86,9 @@ alt_tobind <- mutate(alt, sup_id = asup_id, name=aname, from_tel=afrom_tel, from
                      ss=ass, ss_b4=ass_b4) %>%
               select(id:finish_tm, taste:tag4, avgexp, u_price_avg:chosen) %>%
               filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
+alt_tobind$place_tm <- as.POSIXct(alt_tobind$place_tm)
+alt_tobind$finish_tm <- as.POSIXct(alt_tobind$finish_tm)
+
 
 df_log <- bind_rows(test,alt_tobind)  %>%
   filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
@@ -109,7 +112,7 @@ sth <- sample(df_log$id,5)
 
 df_log <- df_log %>%
   mutate(Eu = reg$coef[1] + t((reg$coef[2:4]) %*% t(select(df_log, taste:service))) + 
-  (reg$coef[5]*df_log$avgexp + reg$coef[6]*df_log$u_price_avg) + reg$coef[7]*df_log$avgexp*df_log$u_price_avg)
+              (reg$coef[5]*df_log$avgexp + reg$coef[6]*df_log$u_price_avg) + reg$coef[7]*df_log$avgexp*df_log$u_price_avg)
   
 #simulate logistic eps by order id s.t. 
 #chosen: Eu + eps_sim > alt: Eu + eps_sim using 
