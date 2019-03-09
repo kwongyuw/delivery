@@ -49,6 +49,9 @@ lm3 <- lm(delay ~ prereq +prepare +price + tmref_catlunch + tmref_catother + use
 lm4 <- lm(delay ~ prereq +prepare +price + tmref_catlunch + tmref_catother + user_exp + ow_ratio + rider_income*complic*dist, data=fullR_dmy)
 stargazer(lm1, lm2, lm3, lm4, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
 
+g_o <- ggplot(crt_df, aes(x=o_lat, y=o_lon)) + geom_point(size=0.01, alpha=0.1)
+g_o + geom_point(aes(x=d_lat, y=d_lon),size=0.01, alpha=0.2, color="red")
+
 # have some outliers 
 ########## Robust
 library(MASS)
