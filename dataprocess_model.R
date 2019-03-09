@@ -71,6 +71,7 @@ crt_df <- df_all %>%
          ride <= 1500, dist <= 140000, time <= 200,
          user_exp < 75, u_price_avg<15000,
          !is.infinite(ow_ratio), ow_ratio<3)
+#remove non-Shanghai coordinates 
 crt_df$o_lat[crt_df$o_lat>31.5] <- NA
 crt_df$o_lat[crt_df$o_lat<31.1] <- NA
 crt_df$d_lat[crt_df$d_lat>31.5] <- NA
