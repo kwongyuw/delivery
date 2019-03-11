@@ -10,6 +10,7 @@ library(caret)
 
 #path to read data files
 setwd("/Users/kwongyu/Google Drive/dwb/dwb_Data")
+
 #df_DEst <- read.csv('data.csv', stringsAsFactors = FALSE) %>% #only focus on the best subset
 df_DEst <- df_all %>%
   select(id:sup_id, place_tm, require_tm, finish_tm, rider_income, price, name, from_addr_xms:service, from_addr, tag1:tag4)
@@ -39,21 +40,22 @@ test <- filter(test, !is.na(avgexp_lo)) %>% filter(n>=5) #note: sum(test$share)!
 df_all <- arrange(df_all, place_tm) %>%
   group_by(user_id, sup_id, name) %>%
   arrange(user_id, sup_id, finish_tm) %>%
-  mutate(ss_b4 = if_else(sup_id==lag(sup_id), 1, 0, missing=0), ss=cumsum(ss_b4)) %>%
-  group_by(user_id) %>% arrange(user_id, place_tm) %>%
+  mutate(ss_b4 = if_else(sup_id==lag(sup_id), 1, 0, missing=0), ss=cumsum(ss_b4))
+  #%>%
+  #group_by(user_id) %>% arrange(user_id, place_tm) %>%
   #past average
 
 #logit
-test <- select(ungroup(df_all), id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm, 
+chosen <- select(ungroup(df_all), id, user_id, sup_id, name, ss, ss_b4, user_exp, u_n_tt, place_tm, finish_tm, 
                price, rider_income,
                taste, envir, service, avgexp_lo, avgexp_up, tag1:tag4, u_price_avg, u_price_sd,
                from_tel, from_addr) %>%
         filter(u_n_tt>1) %>% mutate(chosen=1, avgexp = (avgexp_lo+avgexp_up)/2)
-#summary(lm(shares ~ taste + envir + service + avgexp*tag_cnfast*tag_snack, data=test))
+#summary(lm(shares ~ taste + envir + service + avgexp*tag_cnfast*tag_snack, data=chosen))
 #assume last diff store is the only alternative considered
 alt <- read.csv("alt_for.csv", stringsAsFactors = FALSE)
 #===========4 HOURS to run raw========================
-#alt <- test %>%
+#alt <- chosen %>%
 #        arrange(user_id, sup_id, finish_tm) %>%
 #        mutate(chosen=0, asup_id=NA, aname=NA, ass=NA, ass_b4=NA,
 #               afrom_tel=NA, afrom_addr=NA) #, asup_id=if_else(sup_id==lag(sup_id), aname=lag(name,ss+1)))
@@ -75,7 +77,7 @@ alt <- read.csv("alt_for.csv", stringsAsFactors = FALSE)
 #}
 #===========4 HOURS to run raw========================
 
-temp_sup <- select(test, sup_id, from_tel, from_addr, name, taste:tag4, avgexp) %>%
+temp_sup <- select(chosen, sup_id, from_tel, from_addr, name, taste:tag4, avgexp) %>%
   unique()
 
 alt <- left_join(alt, temp_sup, by=c("asup_id"="sup_id", "aname"="name", "afrom_tel"="from_tel", "afrom_addr"="from_addr"))
@@ -90,7 +92,7 @@ alt_tobind$place_tm <- as.POSIXct(alt_tobind$place_tm)
 alt_tobind$finish_tm <- as.POSIXct(alt_tobind$finish_tm)
 
 
-df_log <- bind_rows(test,alt_tobind)  %>%
+df_log <- bind_rows(chosen,alt_tobind)  %>%
   filter(!is.na(taste), !is.na(envir), !is.na(service), !is.na(avgexp))
 clean_choice <- group_by(df_log, id) %>%
   summarize(n=n()) %>% filter(n>1)
@@ -116,15 +118,17 @@ df_log <- df_log %>%
   
 #simulate logistic eps by order id s.t. 
 #chosen: Eu + eps_sim > alt: Eu + eps_sim using 
+#logistic (0,1)
 df_log$eps_sim <- rlogis(dim(df_log)[1])
 tl <- Sys.time()
+df_resim <- df_log
 while (dim(df_resim)[1] > 0) {
   df_resim <- df_log
   resim_check <- df_resim %>% group_by(id) %>% 
     summarize(chosen_u = max(chosen*(Eu + eps_sim)), 
               alt_u = max((1-chosen)*(Eu + eps_sim))) %>%
     filter(chosen_u<alt_u)
-  if (!(length(resim_check$id) > 1)) {
+  if (!(length(resim_check$id) > 10)) {
     break
     df_log <- filter(df_log, !(id %in% resim_check$id))
     }
@@ -134,18 +138,42 @@ while (dim(df_resim)[1] > 0) {
 }
 print(Sys.time() - tl)
 
+#logistic (0,5)
+df_log$eps_sim5 <- rlogis(dim(df_log)[1],scale=5)
+tl <- Sys.time()
+df_resim <- df_log
+while (dim(df_resim)[1] > 0) {
+  df_resim <- df_log
+  resim_check <- df_resim %>% group_by(id) %>%
+  summarize(chosen_u = max(chosen*(Eu + eps_sim5)),
+  alt_u = max((1-chosen)*(Eu + eps_sim5))) %>%
+  filter(chosen_u<alt_u)
+  if (!(length(resim_check$id) > 10)) {
+    break
+    df_log <- filter(df_log, !(id %in% resim_check$id))
+  }
+  df_resim <- filter(df_log, id %in% resim_check$id)
+  df_log$eps_sim5[which(df_log$id %in% resim_check$id)] <- 
+    rlogis(dim(df_resim)[1], scale=5)
+  print(length(resim_check$id))
+}
+print(Sys.time() - tl)
+
+
 #Utility comparison using logistic (mean=0, sd=1) simulation
 #(focus on util diff for now)
-df_log <- mutate(df_log, u = Eu + eps_sim) %>%
+df_log <- mutate(df_log, u = Eu + eps_sim, u5 = Eu + eps_sim5) %>%
   group_by(id) %>% 
-  mutate(Eu_avg=mean(Eu), u_avg=mean(u), Echosen = max(Eu), Echosen = (Eu==Echosen),
-         util_loss = sum(u*Echosen)-u) %>% 
+  mutate(Eu_avg=mean(Eu), u_avg=mean(u), u5_avg = mean(u5), Echosen = max(Eu), Echosen = (Eu==Echosen), Echosen5=max(Eu), Echosen5=(Eu==Echosen5),
+         util_loss = sum(u*Echosen)-u, util_loss5 = sum(u5*Echosen5)-u5) %>% 
   ungroup() %>% arrange(id)
 # 1/3 customers change choice IF before realizing shock
 #sum(df_log$Echosen * df_log$chosen)
 
 filter(df_log, id %in% sth) %>%
   select(id, Eu, eps_sim, u, Echosen, chosen, util_loss,Eu_avg, u_avg) 
+filter(df_log, id %in% sth) %>%
+  select(id, Eu, eps_sim, eps_sim5, util_loss, util_loss5)
   
 result <- filter(df_log, chosen==1)
 #assuming stdd logistic uncertainty, 
@@ -153,6 +181,13 @@ result <- filter(df_log, chosen==1)
 summary(filter(result, util_loss!=0)$util_loss)
 g_loss <- ggplot(filter(result, util_loss!=0), aes(x=util_loss)) + 
           stat_bin(binwidth = 0.1) + coord_cartesian(xlim=c(-10,6))
+sum(result$util_loss)
+sum(result$u)
+sum(result$util_loss)/sum(result$u)
+#compare to pure logistic err?
+#g_loss + stat_bin(aes(x=eps_sim), alpha=0.5, color="red", binwidth=0.1)
+#compare to actual choices given the logistic realization?
+
 
 #monetary estimate
 # log(p/(1-p)) = β0 + β1Χ -> fit=p which has not realized shock ε
