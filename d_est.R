@@ -164,7 +164,7 @@ print(Sys.time() - tl)
 #(focus on util diff for now)
 df_log <- mutate(df_log, u = Eu + eps_sim, u5 = Eu + eps_sim5) %>%
   group_by(id) %>% 
-  mutate(Eu_avg=mean(Eu), u_avg=mean(u), u5_avg = mean(u5), Echosen = max(Eu), Echosen = (Eu==Echosen), Echosen5=max(Eu), Echosen5=(Eu==Echosen5),
+  mutate(Eu_avg=mean(Eu), u_avg=mean(u), u5_avg = mean(u5), Echosen = max(Eu), Echosen = (Eu==Echosen), 
          util_loss = sum(u*Echosen)-u, util_loss5 = sum(u5*Echosen5)-u5) %>% 
   ungroup() %>% arrange(id)
 # 1/3 customers change choice IF before realizing shock
@@ -181,6 +181,9 @@ result <- filter(df_log, chosen==1)
 summary(filter(result, util_loss!=0)$util_loss)
 g_loss <- ggplot(filter(result, util_loss!=0), aes(x=util_loss)) + 
           stat_bin(binwidth = 0.1) + coord_cartesian(xlim=c(-10,6))
+g_diff <- ggplot(result, aes(x = u)) + 
+  stat_bin(binwidth = 0.1) + coord_cartesian(xlim=c(-10,6)) +
+  stat_bin(binwidth = 0.1, aes(x=u + util_loss), fill="red", alpha=0.3)
 sum(result$util_loss)
 sum(result$u)
 sum(result$util_loss)/sum(result$u)
