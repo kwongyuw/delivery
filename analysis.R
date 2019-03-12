@@ -1,9 +1,7 @@
 # Create regression model matrix 
-library(caret)
-# install.packages("Matching", dependencies=TRUE)
 library(Matching)
+library(caret)
 library(tidyverse)
-# detach("package::tidyverse", unload=TRUE)
 
 source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 names(crt_df)
@@ -17,6 +15,8 @@ model <- crt_df %>%
                 ow_ratio, u_lunch_avg) %>%
   mutate(left_20 = as.factor(left_20), complic = ifelse(time>0, ride/time,NA),
          paid_ratio=ifelse(price>=paid, paid/price, NA))# add covariates
+
+crt_df %>% select(delay) %>% head()
 
 summary(model)
 
@@ -39,9 +39,7 @@ model_1 <- formula(delay ~ prereq +prepare+price + tmref_catlunch + tmref_catoth
                      user_exp + ow_ratio + rider_income*complic*dist)
 
 simple <- lm(model_1, data = fullR_dmy)
-
 summary(simple)
-plot(simple)
 
 lm1 <- lm(delay ~ prereq +price + tmref_catlunch + tmref_catother, data=fullR_dmy)
 lm2 <- lm(delay ~ prereq +prepare +price + tmref_catlunch + tmref_catother, data=fullR_dmy)
@@ -54,7 +52,6 @@ g_o + geom_point(aes(x=d_lat, y=d_lon),size=0.01, alpha=0.2, color="red")
 
 # have some outliers 
 ########## Robust
-library(MASS)
 robust <- rlm(model_1, data = fullR_dmy)
 summary(robust)
 ############# Synthetic group 
@@ -70,10 +67,11 @@ X = r_sam %>% select(-delay,-left_20.1)
 
 #The outcome variable
 Y= r_sam$delay
-
+table(Tr)
 # Treatment
 Tr = r_sam$left_20.1
 #
+
 #Let's call GenMatch() to find the optimal weight to give each
 #covariate in 'X' so as we have achieved balance on the covariates in
 #'BalanceMat'. This is only an example so we want GenMatch to be quick
@@ -82,17 +80,31 @@ Tr = r_sam$left_20.1
 #For details see http://sekhon.berkeley.edu/papers/MatchingJSS.pdf.
 #
 
-genout <- GenMatch(Tr=Tr, X=X, estimand="ATE", M=1,
-                   pop.size=16, max.generations=10, wait.generations=1)
+genout <- GenMatch(Tr=Tr, X=X, estimand="ATE")
 
 genout
 
 
 mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
                Weight.matrix = genout)
+
 summary(mgens)
 
 mb <- MatchBalance(Tr ~ u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist,
                    match.out = mgens, nboots = 10, data = r_sam) 
 
+######Prop inverse probability 
+tr_model <- formula(left_20.1 ~ u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist)
 
+glm1 <- glm(tr_model, family = binomial, data = fullR_dmy)
+summary(glm1)
+
+#IPW model
+fullR_dmy$pihat.log <- glm1$fitted
+
+#Calculate Weights
+fullR_dmy$ipw.weights <- ifelse(fullR_dmy$left_20.1==1, 1/fullR_dmy$pihat.log,1/(1-fullR_dmy$pihat.log))
+
+#ATE Outcome Analysis
+full_ate <- lm (delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist, data = fullR_dmy, weight = ipw.weights )
+summary(full_ate)
