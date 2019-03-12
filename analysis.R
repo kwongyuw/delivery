@@ -68,7 +68,8 @@ r_sam <- fullR_dmy %>%
 #rownames(r_sam) <- 1:nrow(r_sam)
 summary(fullR_dmy)
 #The covariates we want to match on
-X = r_sam %>% dplyr::select(-delay,-left2_20.1)
+X = r_sam %>% dplyr::select(prepare, price, tmref_catlunch, tmref_catother, 
+                            user_exp, ow_ratio, rider_income, complic, dist)
 
 #The outcome variable
 Y= r_sam$delay
@@ -89,12 +90,12 @@ genout <- GenMatch(Tr=Tr, X=X, estimand="ATE", M=1,
 
 genout
 
-
 mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
                Weight.matrix = genout)
 summary(mgens)
 
-mb <- MatchBalance(Tr ~ u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist,
+mb <- MatchBalance(Tr ~ prepare + price + tmref_catlunch + tmref_catother + 
+                   user_exp + ow_ratio + rider_income + complic + dist,
                    match.out = mgens, nboots = 10, data = r_sam) 
 
 
