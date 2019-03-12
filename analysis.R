@@ -3,7 +3,7 @@ library(caret)
 # install.packages("Matching", dependencies=TRUE)
 library(Matching)
 library(tidyverse)
-# detach("package::tidyverse", unload=TRUE)
+# detach("package:tidyverse", unload=TRUE)
 
 source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 names(crt_df)
@@ -15,7 +15,8 @@ model <- crt_df %>%
                 u_price_avg, tmref_cat,
                 time, user_exp, dist, price, rider_income, paid, 
                 ow_ratio, u_lunch_avg) %>%
-  mutate(left_20 = as.factor(left_20), complic = ifelse(time>0, ride/time,NA),
+  mutate(left_20 = as.factor(left_20), left2_20 = as.factor(left2_20),
+         complic = ifelse(time>0, ride/time,NA),
          paid_ratio=ifelse(price>=paid, paid/price, NA))# add covariates
 
 summary(model)
@@ -35,6 +36,7 @@ names(fullR_dmy)
 
 play <- sample_n(model,1000)
 pairs(dplyr::select(play, delay, prereq, prepare, ride, time), cex=0.1)
+#most interesting one
 model_1 <- formula(delay ~ prereq +prepare+price + tmref_catlunch + tmref_catother + 
                      user_exp + ow_ratio + rider_income*complic*dist)
 
@@ -61,12 +63,12 @@ summary(robust)
 
 # take random sample for testing 
 r_sam <- fullR_dmy %>%
-  sample_n(20000)
+  sample_n(2000)
 
 #rownames(r_sam) <- 1:nrow(r_sam)
 summary(fullR_dmy)
 #The covariates we want to match on
-X = r_sam %>% select(-delay,-left_20.1)
+X = r_sam %>% dplyr::select(-delay,-left2_20.1)
 
 #The outcome variable
 Y= r_sam$delay
