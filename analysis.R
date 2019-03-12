@@ -10,7 +10,7 @@ names(crt_df)
 
 # create model matrix (ADD VARIABLES HERE)
 model <- crt_df %>% 
-  dplyr::select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_m,
+  dplyr::select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_20, left2_m,
                 u_price_avg, tmref_cat,
                 time, user_exp, dist, price, rider_income, paid, 
                 ow_ratio, u_lunch_avg) %>%
