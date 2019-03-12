@@ -40,7 +40,8 @@ df_all <- left_join(df_all , df_feat, by='id')
 #######
 # left over time is calculated after subtracting cooking time and travel time from prereq
 df_all <- df_all %>% 
-  mutate(left_m = left1/60,
+  mutate(left_m = left1/60, 
+         left2 = prereq - (prepare+time), left2_m = left2/60,
          left_20 = ifelse(left_m >= 20, 1, 0))
 
 sum(is.na(df_all$prereq))
@@ -56,12 +57,29 @@ df_all <- df_all %>%
 
 prop.table(table(df_all$tmref_cat))
 
+# put cords back to numeric lat lon
+df_all <- separate(df_all, o_cords, c("o_lat", "o_lon"), sep=",", remove=FALSE, convert=TRUE) %>%
+          separate(d_cords, c("d_lat", "d_lon"), sep=",", remove=FALSE, convert=TRUE)
+
+df_all[df_all$o_l]
+
 ### Do proper subsets 
 crt_df <- df_all %>%
-  filter(prereq > 2100 & prereq < 3600,
-         left_m >= -120 & left_m < 120,
-         dist <= 140000,
-         user_exp < 200)
+  filter(delay <6000, prereq > 0 & prereq < 6000, #prereq>2100, prereq<3600
+         left_m < 240,
+         price <= 15000, paid <= 15000, rider_income <= 1300,
+         ride <= 1500, dist <= 140000, time <= 200,
+         user_exp < 75, u_price_avg<15000,
+         !is.infinite(ow_ratio), ow_ratio<3)
+#remove non-Shanghai coordinates 
+crt_df$o_lat[crt_df$o_lat>31.5] <- NA
+crt_df$o_lat[crt_df$o_lat<31.1] <- NA
+crt_df$d_lat[crt_df$d_lat>31.5] <- NA
+crt_df$d_lat[crt_df$d_lat<31.1] <- NA
+crt_df$o_lon[crt_df$o_lon>121.7] <- NA
+crt_df$o_lon[crt_df$o_lon<121.3] <- NA
+crt_df$d_lon[crt_df$d_lon>121.7] <- NA
+crt_df$d_lon[crt_df$d_lon<121.3] <- NA
 
 rm(a_df)
 rm(df_feat)

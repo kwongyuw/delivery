@@ -5,7 +5,7 @@ library(stringr)
 library(openxlsx)
 library(data.table)
 
-source('/Volumes/GoogleDrive/Team Drives/delivery/data/cred.txt')
+source('~/Google Drive/dwb/cred.txt')
 # source('~/Documents/eScience/projects/delivery/baidu_geo_func.R')
 
 
@@ -29,11 +29,11 @@ baidu_distance <- function(origins, destinations) {
   out
   }
 
-df_from <- fread(file = '/Volumes/GoogleDrive/Team Drives/delivery/data/data_full_from_addr.csv', 
+df_from <- fread(file = '~/Google Drive/dwb/dwb_Data/data_full_from_addr.csv', 
                         na.strings = c(""),
                         stringsAsFactors = F)
 
-df_to <- fread(file = '/Volumes/GoogleDrive/Team Drives/delivery/data/data_full.csv', 
+df_to <- fread(file = '~/Google Drive/dwb/dwb_Data/data_full.csv', 
                  na.strings = c(""),
                  stringsAsFactors = F)
 ### create df of vendor and individual addresses by userID
@@ -54,7 +54,7 @@ df_dcords <- df_from %>%
 df <- inner_join(df_ocords,df_dcords, by = c("id"))
               
 
-df <- df %>% slice(1:20) #you can change to 30,000 for each run 
+df <- df %>% slice(299981:329980) #you can change to 30,000 for each run 
 #Initialize
 df$dist<-NA
 df$dist_txt<-NA
@@ -79,4 +79,4 @@ for(i in 1:nrow(df)){
 
 }
 
-
+write.csv(df, 'dist11.csv')
