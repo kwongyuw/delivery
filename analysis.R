@@ -3,7 +3,6 @@ library(Matching)
 library(caret)
 library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
-=======
 source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 names(crt_df)
 
