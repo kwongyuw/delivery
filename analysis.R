@@ -133,5 +133,5 @@ library(ggfortify)
 
 autoplot(deliver_pca, data = pca_dat, loadings = T)
 
-autoplot(kmeans(pca_dat, 6), data = pca_dat, frame = TRUE)
+autoplot(kmeans(pca_dat, 5), data = pca_dat, frame = TRUE)
 
