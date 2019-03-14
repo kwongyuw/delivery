@@ -4,7 +4,8 @@ library(openxlsx)
 library(data.table)
 library(readxl)
 
-data_dir <- '/Volumes/GoogleDrive/Team Drives/delivery/data'
+#data_dir <- '/Volumes/GoogleDrive/Team Drives/delivery/data'
+data_dir <- '/Users/kwongyu/Google Drive/dwb/dwb_Data'
 
 
 temp = list.files(path = data_dir, pattern="*.xlsx$")
@@ -61,7 +62,6 @@ prop.table(table(df_all$tmref_cat))
 df_all <- separate(df_all, o_cords, c("o_lat", "o_lon"), sep=",", remove=FALSE, convert=TRUE) %>%
           separate(d_cords, c("d_lat", "d_lon"), sep=",", remove=FALSE, convert=TRUE)
 
-df_all[df_all$o_l]
 
 ### Do proper subsets 
 crt_df <- df_all %>%

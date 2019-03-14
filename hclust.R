@@ -1,5 +1,9 @@
 library(tidyverse)
 library(clValid)
+library(cluster)
+library(factoextra)
+
+source('/Users/kwongyu/Google Drive/dwb/git/delivery/dataprocess_model.R')
 
 user <- group_by(crt_df, user_id) %>%
   arrange(user_id, finish_tm) %>%
@@ -32,7 +36,14 @@ count(small_cl,hie_cl)
 #k=4: 0.0013 vs k=10: 0.0003
 
 kmean_cl <- kmeans(user_sc, 10)
-small_cl$kme_cl <- kmean_cl$cluster
-count(small_cl, kme_cl)
-table(small_cl$hie_cl, small_cl$kme_cl)
-
+#small_cl$kme_cl <- kmean_cl$cluster
+#count(small_cl, kme_cl)
+#table(small_cl$hie_cl, small_cl$kme_cl)
+table(kmean_cl$cluster)
+fviz_nbclust(user_sc, kmeans, method = "wss")
+fviz_nbclust(user_sc, kmeans, method = "silhouette")
+#gap_stat <- clusGap(user_sc, FUN = kmeans, nstart = 25,
+#                    K.max = 10, B = 50)
+#fviz_gap_stat(gap_stat)
+kmean_cl <- kmeans(user_sc, 5)
+fviz_cluster(kmean_cl, data=user_sc)
