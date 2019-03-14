@@ -2,9 +2,11 @@
 library(Matching)
 library(caret)
 library(tidyverse)
-# detach("package:tidyverse", unload=TRUE)
-=======
-source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
+library(RCurl)
+
+script <- RCurl::getURL("https://raw.githubusercontent.com/kwongyuw/delivery/master/dataprocess_model.R")
+eval(parse(text = script))
+
 names(crt_df)
 
 
@@ -71,9 +73,10 @@ X = r_sam %>% dplyr::select(prepare, price, tmref_catlunch, tmref_catother,
 
 #The outcome variable
 Y= r_sam$delay
-table(Tr)
+
 # Treatment
 Tr = r_sam$left_20.1
+table(Tr)
 #
 
 #Let's call GenMatch() to find the optimal weight to give each
@@ -84,7 +87,7 @@ Tr = r_sam$left_20.1
 #For details see http://sekhon.berkeley.edu/papers/MatchingJSS.pdf.
 #
 
-genout <- GenMatch(Tr=Tr, X=X, estimand="ATE")
+genout <- GenMatch(Tr=Tr, X=X, estimand="ATT", pop.size = 1000, max.generations=10, wait.generations=1)
 
 genout
 

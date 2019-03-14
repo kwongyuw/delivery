@@ -61,8 +61,6 @@ prop.table(table(df_all$tmref_cat))
 df_all <- separate(df_all, o_cords, c("o_lat", "o_lon"), sep=",", remove=FALSE, convert=TRUE) %>%
           separate(d_cords, c("d_lat", "d_lon"), sep=",", remove=FALSE, convert=TRUE)
 
-df_all[df_all$o_l]
-
 ### Do proper subsets 
 crt_df <- df_all %>%
   filter(delay <6000, prereq > 0 & prereq < 6000, #prereq>2100, prereq<3600
