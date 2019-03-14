@@ -42,7 +42,7 @@ df_all <- left_join(df_all , df_feat, by='id')
 df_all <- df_all %>% 
   mutate(left_m = left1/60, 
          left2 = prereq - (prepare+time), left2_m = left2/60,
-         left_20 = ifelse(left_m >= 20, 1, 0))
+         left_20 = ifelse(left_m >= 20, 1, 0), left2_20 = ifelse(left2_m >= 20, 1, 0))
 
 sum(is.na(df_all$prereq))
 sum(is.na(df_all$left1))

@@ -12,11 +12,12 @@ names(crt_df)
 
 # create model matrix (ADD VARIABLES HERE)
 model <- crt_df %>% 
-        select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_m,
+  dplyr::select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_20, left2_m,
                 u_price_avg, tmref_cat,
                 time, user_exp, dist, price, rider_income, paid, 
                 ow_ratio, u_lunch_avg) %>%
-  mutate(left_20 = as.factor(left_20), complic = ifelse(time>0, ride/time,NA),
+  mutate(left_20 = as.factor(left_20), left2_20 = as.factor(left2_20),
+         complic = ifelse(time>0, ride/time,NA),
          paid_ratio=ifelse(price>=paid, paid/price, NA))# add covariates
 
 crt_df %>% select(delay) %>% head()
@@ -36,8 +37,9 @@ fullR_dmy <- data.frame(predict(dmy, newdata = model)) %>% na.omit()
 # selct your model formula
 names(fullR_dmy)
 
-play <- sample_n(model,100)
-pairs(dplyr::select(play, delay, prereq, left_m, left2_m, ride), cex=0.1)
+play <- sample_n(model,1000)
+pairs(dplyr::select(play, delay, prereq, prepare, ride, time), cex=0.1)
+#most interesting one
 model_1 <- formula(delay ~ prereq +prepare+price + tmref_catlunch + tmref_catother + 
                      user_exp + ow_ratio + rider_income*complic*dist)
 
@@ -61,12 +63,13 @@ summary(robust)
 
 # take random sample for testing 
 r_sam <- fullR_dmy %>%
-  sample_n(10000)
+  sample_n(2000)
 
 #rownames(r_sam) <- 1:nrow(r_sam)
 summary(fullR_dmy)
 #The covariates we want to match on
-X = r_sam %>% select(-delay,-left_20.1)
+X = r_sam %>% dplyr::select(prepare, price, tmref_catlunch, tmref_catother, 
+                            user_exp, ow_ratio, rider_income, complic, dist)
 
 #The outcome variable
 Y= r_sam$delay
@@ -89,14 +92,12 @@ genout <- GenMatch(Tr=Tr, X=X, estimand="ATT", pop.size = 1000, max.generations=
 genout
 
 mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
-               Weight = 2)
-
-mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
                Weight.matrix = genout)
 
 summary(mgens)
 
-mb <- MatchBalance(Tr ~ u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist,
+mb <- MatchBalance(Tr ~ prepare + price + tmref_catlunch + tmref_catother + 
+                   user_exp + ow_ratio + rider_income + complic + dist,
                    match.out = mgens, nboots = 10, data = r_sam) 
 
 ######Prop inverse probability 
