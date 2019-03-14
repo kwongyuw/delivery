@@ -2,14 +2,17 @@
 library(Matching)
 library(caret)
 library(tidyverse)
+library(RCurl)
 
-source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
+script <- RCurl::getURL("https://raw.githubusercontent.com/kwongyuw/delivery/master/dataprocess_model.R")
+eval(parse(text = script))
+
 names(crt_df)
 
 
 # create model matrix (ADD VARIABLES HERE)
 model <- crt_df %>% 
-  dplyr::select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_m,
+        select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_m,
                 u_price_avg, tmref_cat,
                 time, user_exp, dist, price, rider_income, paid, 
                 ow_ratio, u_lunch_avg) %>%
@@ -58,7 +61,7 @@ summary(robust)
 
 # take random sample for testing 
 r_sam <- fullR_dmy %>%
-  sample_n(20000)
+  sample_n(10000)
 
 #rownames(r_sam) <- 1:nrow(r_sam)
 summary(fullR_dmy)
@@ -67,9 +70,10 @@ X = r_sam %>% select(-delay,-left_20.1)
 
 #The outcome variable
 Y= r_sam$delay
-table(Tr)
+
 # Treatment
 Tr = r_sam$left_20.1
+table(Tr)
 #
 
 #Let's call GenMatch() to find the optimal weight to give each
@@ -80,10 +84,12 @@ Tr = r_sam$left_20.1
 #For details see http://sekhon.berkeley.edu/papers/MatchingJSS.pdf.
 #
 
-genout <- GenMatch(Tr=Tr, X=X, estimand="ATE")
+genout <- GenMatch(Tr=Tr, X=X, estimand="ATT", pop.size = 1000, max.generations=10, wait.generations=1)
 
 genout
 
+mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
+               Weight = 2)
 
 mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
                Weight.matrix = genout)
