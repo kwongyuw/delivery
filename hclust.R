@@ -22,7 +22,7 @@ any(is.na(user))
 
 
 set.seed(715)
-small <- sample_n(user, 10000)
+small <- sample_n(user, 1000)
 user_sc <- as.data.frame(scale(select(small, -user_id)))
 
 dist_mat <- dist(user_sc, method="euclidean")
@@ -46,4 +46,7 @@ fviz_nbclust(user_sc, kmeans, method = "silhouette")
 #                    K.max = 10, B = 50)
 #fviz_gap_stat(gap_stat)
 kmean_cl <- kmeans(user_sc, 5)
+small$cl_k5 <- kmean_cl$cluster
 fviz_cluster(kmean_cl, data=user_sc)
+kmean_cl <- kmeans(user_sc, 9)
+small$cl_k9 <- kmean_cl$cluster
