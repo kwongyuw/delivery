@@ -114,3 +114,24 @@ fullR_dmy$ipw.weights <- ifelse(fullR_dmy$left_20.1==1, 1/fullR_dmy$pihat.log,1/
 #ATE Outcome Analysis
 full_ate <- lm (delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist, data = fullR_dmy, weight = ipw.weights )
 summary(full_ate)
+
+####PCA EXPLORATORY
+names(model)
+pca_dat <- crt_df %>%
+  select(prereq, prepare, ride, left2_m,
+         u_price_avg,
+         time, user_exp, dist, price, rider_income, paid, 
+         ow_ratio) %>%
+  sample_n(10000)
+
+deliver_pca <- prcomp(pca_dat,
+                    center = TRUE,
+                    scale. = TRUE) 
+summary(deliver_pca)
+
+library(ggfortify)
+
+autoplot(deliver_pca, data = pca_dat, loadings = T)
+
+autoplot(kmeans(pca_dat, 6), data = pca_dat, frame = TRUE)
+
