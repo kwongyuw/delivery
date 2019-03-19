@@ -2,6 +2,7 @@
 library(caret)
 library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
+library(stargazer)
 source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 
 library(RCurl)
@@ -27,8 +28,8 @@ crt_df %>% select(delay) %>% head()
 summary(model)
 
 # center or scale the data ? 
-std_data <- preProcess(model[,-1], method = c("center", "scale"))
-model <-  data.frame(predict(std_data, newdata = model))
+#std_data <- preProcess(model[,-1], method = c("center", "scale"))
+#model <-  data.frame(predict(std_data, newdata = model))
 
 # create time of day dummies if you need a reference then use 
 # fullRank = T if False then you get all the categpries as dummy vars 
@@ -61,6 +62,12 @@ g_o + geom_point(aes(x=d_lat, y=d_lon),size=0.01, alpha=0.2, color="red")
 ########## Robust
 robust <- rlm(model_1, data = fullR_dmy)
 summary(robust)
+###
+lm1 <- lm(delay ~ prereq +price, data=fullR_dmy)
+lm2 <- lm(delay ~ prereq +price, data=filter(fullR_dmy, left2_m>20))
+stargazer(lm1, lm2, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
+
+
 ############# Synthetic group 
 library(Matching)
 # take random sample for testing 
@@ -103,7 +110,8 @@ mb <- MatchBalance(Tr ~ prepare + price + tmref_catlunch + tmref_catother +
                    match.out = mgens, nboots = 10, data = r_sam) 
 
 ######Prop inverse probability 
-tr_model <- formula(left_20.1 ~ u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist)
+tr_model <- formula(left2_20.1 ~ prepare + price + tmref_catlunch + tmref_catother + 
+                      user_exp + ow_ratio + rider_income + complic + dist)
 
 glm1 <- glm(tr_model, family = binomial, data = fullR_dmy)
 summary(glm1)
@@ -112,11 +120,18 @@ summary(glm1)
 fullR_dmy$pihat.log <- glm1$fitted
 
 #Calculate Weights
-fullR_dmy$ipw.weights <- ifelse(fullR_dmy$left_20.1==1, 1/fullR_dmy$pihat.log,1/(1-fullR_dmy$pihat.log))
+fullR_dmy$ipw.weights <- ifelse(fullR_dmy$left2_20.1==1, 1/fullR_dmy$pihat.log,1/(1-fullR_dmy$pihat.log))
 
 #ATE Outcome Analysis
-full_ate <- lm (delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist, data = fullR_dmy, weight = ipw.weights )
-summary(full_ate)
+lm1 <- lm (delay ~ left2_20.1 + prepare + price + tmref_catlunch + tmref_catother + 
+             user_exp + ow_ratio + rider_income + complic + dist, 
+           data = fullR_dmy)
+full_ate <- lm (delay ~ left2_20.1 + prepare + price + tmref_catlunch + tmref_catother + 
+                  user_exp + ow_ratio + rider_income + complic + dist, 
+                data = fullR_dmy, weight = ipw.weights )
+#summary(full_ate)
+stargazer(lm1, full_ate, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
+
 
 ####PCA EXPLORATORY
 names(model)
