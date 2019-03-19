@@ -4,6 +4,12 @@ library(caret)
 library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
 source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
+
+library(RCurl)
+
+script <- RCurl::getURL("https://raw.githubusercontent.com/kwongyuw/delivery/master/dataprocess_model.R")
+eval(parse(text = script))
+
 names(crt_df)
 
 
@@ -70,9 +76,10 @@ X = r_sam %>% dplyr::select(prepare, price, tmref_catlunch, tmref_catother,
 
 #The outcome variable
 Y= r_sam$delay
-table(Tr)
+
 # Treatment
 Tr = r_sam$left_20.1
+table(Tr)
 #
 
 #Let's call GenMatch() to find the optimal weight to give each
@@ -83,7 +90,7 @@ Tr = r_sam$left_20.1
 #For details see http://sekhon.berkeley.edu/papers/MatchingJSS.pdf.
 #
 
-genout <- GenMatch(Tr=Tr, X=X, estimand="ATE")
+genout <- GenMatch(Tr=Tr, X=X, estimand="ATT", pop.size = 1000, max.generations=10, wait.generations=1)
 
 genout
 
@@ -111,3 +118,24 @@ fullR_dmy$ipw.weights <- ifelse(fullR_dmy$left_20.1==1, 1/fullR_dmy$pihat.log,1/
 #ATE Outcome Analysis
 full_ate <- lm (delay ~ left_20.1 + u_price_avg + tmref_catlunch + tmref_catother + time + user_exp + dist, data = fullR_dmy, weight = ipw.weights )
 summary(full_ate)
+
+####PCA EXPLORATORY
+names(model)
+pca_dat <- crt_df %>%
+  select(prereq, prepare, ride, left2_m,
+         u_price_avg,
+         time, user_exp, dist, price, rider_income, paid, 
+         ow_ratio) %>%
+  sample_n(10000)
+
+deliver_pca <- prcomp(pca_dat,
+                    center = TRUE,
+                    scale. = TRUE) 
+summary(deliver_pca)
+
+library(ggfortify)
+
+autoplot(deliver_pca, data = pca_dat, loadings = T)
+
+autoplot(kmeans(pca_dat, 5), data = pca_dat, frame = TRUE)
+
