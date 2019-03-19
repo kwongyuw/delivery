@@ -1,5 +1,4 @@
 # Create regression model matrix 
-library(Matching)
 library(caret)
 library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
@@ -63,10 +62,10 @@ g_o + geom_point(aes(x=d_lat, y=d_lon),size=0.01, alpha=0.2, color="red")
 robust <- rlm(model_1, data = fullR_dmy)
 summary(robust)
 ############# Synthetic group 
-
+library(Matching)
 # take random sample for testing 
 r_sam <- fullR_dmy %>%
-  sample_n(2000)
+  sample_n(1000)
 
 #rownames(r_sam) <- 1:nrow(r_sam)
 summary(fullR_dmy)
@@ -78,7 +77,7 @@ X = r_sam %>% dplyr::select(prepare, price, tmref_catlunch, tmref_catother,
 Y= r_sam$delay
 
 # Treatment
-Tr = r_sam$left_20.1
+Tr = r_sam$left2_20.1
 table(Tr)
 #
 
