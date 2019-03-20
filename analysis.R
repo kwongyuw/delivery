@@ -63,16 +63,20 @@ g_o + geom_point(aes(x=d_lat, y=d_lon),size=0.01, alpha=0.2, color="red")
 robust <- rlm(model_1, data = fullR_dmy)
 summary(robust)
 ###
-lm1 <- lm(delay ~ prereq +price, data=fullR_dmy)
-lm2 <- lm(delay ~ prereq +price, data=filter(fullR_dmy, left2_m>20))
-stargazer(lm1, lm2, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
+lm1 <- lm(delay ~ prereq +prepare + price + tmref_catlunch + tmref_catother + 
+            user_exp + ow_ratio + rider_income + complic + dist, data=fullR_dmy)
+lm2 <- lm(delay ~ left2_20.1 +prepare + price + tmref_catlunch + tmref_catother + 
+            user_exp + ow_ratio + rider_income + complic + dist, data=fullR_dmy)
+lm3 <- lm(delay ~ prereq +prepare + price + tmref_catlunch + tmref_catother + 
+            user_exp + ow_ratio + rider_income + complic + dist, data=filter(fullR_dmy, left2_m>20))
+stargazer(lm1, lm2, lm3, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
 
 
 ############# Synthetic group 
 library(Matching)
 # take random sample for testing 
 r_sam <- fullR_dmy %>%
-  sample_n(1000)
+  sample_n(2000)
 
 #rownames(r_sam) <- 1:nrow(r_sam)
 summary(fullR_dmy)
@@ -98,7 +102,7 @@ table(Tr)
 
 genout <- GenMatch(Tr=Tr, X=X, estimand="ATT", pop.size = 1000, max.generations=10, wait.generations=1)
 
-genout
+#genout
 
 mgens <- Match(Y=Y, Tr= Tr, X = X, estimand="ATT",
                Weight.matrix = genout)
@@ -136,7 +140,7 @@ stargazer(lm1, full_ate, type="text", report="cvt*", omit.stat=c("f", "ser", "rs
 ####PCA EXPLORATORY
 names(model)
 pca_dat <- crt_df %>%
-  select(prereq, prepare, ride, left2_m,
+  dplyr::select(prereq, prepare, ride, left2_m,
          u_price_avg,
          time, user_exp, dist, price, rider_income, paid, 
          ow_ratio) %>%
@@ -151,5 +155,5 @@ library(ggfortify)
 
 autoplot(deliver_pca, data = pca_dat, loadings = T)
 
-autoplot(kmeans(pca_dat, 5), data = pca_dat, frame = TRUE)
+autoplot(kmeans(pca_dat, 5), data = pca_dat, frame = TRUE, size=0.1)
 
