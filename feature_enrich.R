@@ -120,6 +120,23 @@ user <- group_by(df, user_id) %>%
 
 df <- left_join(df, user, by = c("user_id"))
 
-df <- select(df, id, delay:sup_exp, r_shift:u_span)
+#Weather: NCDC_NOAA on Hongqiao, hourly
+df <- mutate(df, place_date=as.Date(place_tm),
+             place_tmref = hour(place_tm)+((minute(place_tm)>=15)&(minute(place_tm)<45))*0.5+(minute(place_tm)>=45)*1)
+df <- left_join(df,hq, by = c("place_date"="date", "place_tmref"="tmref"), 
+                suffix=c("","_hqp"))
+df <- left_join(df,hq, by = c("require_date"="date", "require_tmref"="tmref"), 
+                suffix=c("","_hqr"))
+df <- left_join(df,pd, by = c("place_date"="date", "place_tmref"="tmref"), 
+                suffix=c("","_pdp"))
+df <- left_join(df,pd, by = c("require_date"="date", "require_tmref"="tmref"), 
+                suffix=c("","_pdr"))
+
+#tedious check
+#(filter(select(df,place_tm,place_tmref,precipitating,pcp_begin),precipitating==TRUE))[860:870,]
+#filter((select(hq, ymdhm, year,month, day, precipitating, switch_to, regime, pcp_begin)),month==11, day==6)[34:40,]
+
+
+df <- select(df, id, delay:sup_exp, r_shift:shw_begin_pdr)
 
 write.csv(df, 'data_derived.csv')
