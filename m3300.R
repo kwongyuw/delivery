@@ -4,11 +4,12 @@ library(stargazer)
 source('/Users/kwongyu/Google Drive/dwb/git/delivery/dataprocess_model.R')
 
 df <- group_by(df_all, rider_id, month=month(finish_tm)) %>%
-  select(rider_id, month, ends_with("_tm"), rider_income, dist, time) %>%
+  select(rider_id, id, month, ends_with("_tm"), rider_income, dist, time, onhand) %>%
   mutate(ri_subs=rider_income+300,  count_atm=order(order(finish_tm)), 
          inc_atm=cumsum(rider_income),sinc_atm=cumsum(ri_subs),
          excel_month=(max(inc_atm)/100>3000), sexcel_month=(max(sinc_atm)/100>3000), 
          speed = dist/ifelse(finish_tm!=leave_tm, as.numeric(finish_tm - leave_tm), NA),
+         speed_wt = speed*onhand, # magnify speed by multi-orders on hand
          bdunexp = ifelse(finish_tm!=leave_tm, as.numeric(finish_tm - leave_tm), NA)/time,
          lunch_hr = (hour(require_tm)>=10 & hour(require_tm)<14), 
          dinner_hr= (hour(require_tm)>=17 & hour(require_tm)<20)) %>%
@@ -28,20 +29,22 @@ for (i in c(3,5,7)) {
   focus <- unique(filter(df,remain_days<=i, inc_atm/100>=(3000-100*i), inc_atm/100<(3000+100*i))$rider_id)
   succeed <- unique(filter(df,inc_atm/100>=3000)$rider_id)
   
-  # speed (prone to multi-order issue)
+  # speed_wt (weight the speed to handle multi-order issue)
   print(summary(filter(df,rider_id %in% focus, rider_id %in% succeed, 
-                       remain_days<=i, inc_atm/100<3000,inc_atm/100>=(3000-100*i))$speed))
+                       remain_days<=i, inc_atm/100<3000,inc_atm/100>=(3000-100*i))$speed_wt))
   print(summary(filter(df,rider_id %in% focus, rider_id %in% succeed, 
-                       remain_days<=i,inc_atm/100>=3000, inc_atm/100<(3000+100*i))$speed))
+                       remain_days<=i,inc_atm/100>=3000, inc_atm/100<(3000+100*i))$speed_wt))
   filter(df,rider_id %in% focus, rider_id %in% succeed, remain_days<=i) %>%
     ggplot(aes(x=speed,fill=as.factor(inc_atm/100>=3000))) + 
     stat_density(alpha=0.4, position="identity")
   
   # number of orders (avoid multi-order issue)
+  ## before $3000
   temp <- filter(df,rider_id %in% focus, rider_id %in% succeed,
                  remain_days<=i, inc_atm/100<3000,inc_atm/100>=(3000-100*i))
   table(temp$lunch_hr,temp$dinner_hr) %>%
     print()
+  ## after $3000
   temp <- filter(df,rider_id %in% focus, rider_id %in% succeed,
                  remain_days<=i, inc_atm/100>=3000, inc_atm/100<(3000+100*i))
   table(temp$lunch_hr,temp$dinner_hr) %>%
@@ -49,6 +52,7 @@ for (i in c(3,5,7)) {
   # when i=3, opposite result if chg the bar to 2700, and diff if 2800 or 2900
   # placebo check example below (supportive for 2700,2800,2900,2300, contradictive:3400)
 }
+# placebo check example below (supportive for 2700,2800,2900,2300, contradictive:3400)
 focus <- unique(filter(df,remain_days<=i, inc_atm/100>=(3400-100*i), inc_atm/100<(3400+100*i))$rider_id)
 succeed <- unique(filter(df,inc_atm/100>=3400)$rider_id)
 i

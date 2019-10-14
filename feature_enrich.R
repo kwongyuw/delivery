@@ -20,7 +20,7 @@ df <- do.call(bind_rows,
 
 
 #(manip raw) order features
-#timing info
+#timing info ####
 df <- mutate(df, delay=as.numeric(finish_tm)-as.numeric(require_tm), 
              prereq=as.numeric(require_tm)-as.numeric(place_tm), 
              prepare=as.numeric(leave_tm)-as.numeric(dipatch_tm), 
@@ -36,11 +36,11 @@ df <- mutate(df, delay=as.numeric(finish_tm)-as.numeric(require_tm),
 #shw_rdur=pmin(shw_dur,(hour(place_tm)-hour(rel_tm))+(minute(place_tm)-minute(rel_tm))/60)) #shw_rel should always be + , shw_rdur1=pmin(shw_dur,as.numeric(require_tm)-as.numeric(rel_tm))
 
 #(manip raw)rider frequency (i.e. how experienced is rider)
-#rider-order ratio (#riders active, #orders to be delivered every 30mins)
+#rider-order ratio (#riders active, #orders to be delivered every 30mins) ####
 ###too large to manipulate for work-order ratio(ETA: 5hrs), load from roster30.RData instead 
 load("roster30.RData")
 ### or run the bunch below
-#==========detailed 1 day example (non-run-able)=============================================
+#==========detailed 1 day example (non-run-able)
 # make up rider availability
 #t <- min(df$read_tm, na.rm=TRUE)
 #filter to day-size for easier manipulation
@@ -77,7 +77,7 @@ load("roster30.RData")
 # we can also do high quality 5-min monitoring...
 #order30 <- group_by(df, read_date=as.Date(read_tm), require_tmref) %>%
 #  summarise(order_n=n())
-#===============================================================================================
+# ===
 remove(roster30_7, roster30_8, roster30_9, worker)
 #Merge order & roster to df
 df$require_tmref <- hour(df$require_tm)+((minute(df$require_tm)>=15)&(minute(df$require_tm)<45))*0.5+(minute(df$require_tm)>=45)*1
@@ -87,19 +87,52 @@ df <- left_join(df,roster30, by = c("require_date"="date", "require_tmref"="tmre
   left_join(order30, by=c("require_date"="read_date", "require_tmref")) %>%
   mutate(ow_ratio = order_n/avai_n30, tm=NULL)
 
-#(manip raw)user frequency (i.e. how familiar w/ the app)
+#(manip raw)user frequency (i.e. how familiar w/ the app) ####
 df <- arrange(df, user_id, place_tm) %>% group_by(user_id) %>% 
         mutate(count=1, user_exp=cumsum(count)) %>% group_by()
-#rider experience (in # orders finished under data period)
+#rider experience (in # orders finished under data period) ####
 df <- arrange(df, rider_id, read_tm) %>% group_by(rider_id) %>% 
         mutate(rider_exp=cumsum(count)) %>% group_by()
-#(manip raw) store frequency (i.e. how experience is restaurant), supplier volume by time
+#(manip raw) store frequency (i.e. how experience is restaurant), supplier volume by time ####
 df <- arrange(df, sup_id, read_tm) %>% group_by(sup_id) %>% 
         mutate(sup_exp=cumsum(count)) %>% group_by()
 df <- select(df, -count)
 
+#Number of orders on-hand ####
+multi_order <- drop_na(df,arrive_tm) %>%
+          select(rider_id,id, arrive_tm,finish_tm) %>%
+          gather(key="action",value="tm",arrive_tm,finish_tm) %>%
+          arrange(rider_id,tm) %>%
+          mutate(addorder=if_else(action=="arrive_tm",1,-1)) %>%
+          group_by(rider_id) %>%
+          mutate(onhand=cumsum(addorder), 
+                 onhandXdur=onhand*as.numeric(lead(tm)-tm)) %>%
+          ungroup()
+##also, maybe time consuming? 0.3*60=18mins
+rids <- unique(multi_order$rider_id)
+tl <- Sys.time()
+onhandXdur <- list()
+for (r in c(1:length(rids))) {
+  short <- filter(multi_order,rider_id==rids[r])
+  ids <- unique(short$id)
+  temp <- list()
+  for (i in c(1:length(ids))) {
+    id<-ids[i]
+    temp[[i]] <- short[which(short$id==id & short$action=="arrive_tm"):(which(short$id==id & short$action=="finish_tm")-1),] %>% 
+                        # beginning of this order                       drop last row as it concerns after finishing this order
+      summarize(id=first(id), onhandXdur=sum(onhandXdur))
+  }
+  onhandXdur[[r]] <- bind_rows(temp)
+}
+onhandXdur <- bind_rows(onhandXdur)
+print(Sys.time()-tl)
+#runtime est: length(unique(multi_order$id))/6879*23/3600
 
-#Number of orders finished in each shift
+df <- left_join(df,select(onhandXdur,id,onhandXdur),
+                by="id") %>%
+        mutate(onhand = onhandXdur/as.numeric(finish_tm-arrive_tm))
+
+#Number of orders finished in each shift ####
 df <- group_by(df, rider_id, read_date=as.Date(read_tm)) %>%
   arrange(read_tm) %>%
   mutate(r_new_shift=ifelse(is.na(lag(finish_tm)),FALSE,((as.numeric(read_tm)-as.numeric(lag(finish_tm)))/3600)>1), 
@@ -114,7 +147,7 @@ rider <- group_by(df) %>% group_by(rider_id, read_date, r_shift) %>%
 df <- left_join(df, rider, by = c("rider_id", "read_date", "r_shift"))
 
 
-#user features
+#user features ####
 user <- group_by(df, user_id) %>%
   arrange(user_id, finish_tm) %>%
   summarize(u_n_tt=n(), u_rinc_avg=mean(rider_income), u_delay_avg=mean(delay),
@@ -123,7 +156,7 @@ user <- group_by(df, user_id) %>%
 
 df <- left_join(df, user, by = c("user_id"))
 
-#Weather: NCDC_NOAA on Hongqiao, hourly
+#Weather: NCDC_NOAA on Hongqiao, hourly ####
 df <- mutate(df, place_date=as.Date(place_tm),
              place_tmref = hour(place_tm)+((minute(place_tm)>=15)&(minute(place_tm)<45))*0.5+(minute(place_tm)>=45)*1)
 df <- left_join(df,hq, by = c("place_date"="date", "place_tmref"="tmref"), 
@@ -135,11 +168,11 @@ df <- left_join(df,pd, by = c("place_date"="date", "place_tmref"="tmref"),
 df <- left_join(df,pd, by = c("require_date"="date", "require_tmref"="tmref"), 
                 suffix=c("","_pdr"))
 
-#tedious check
+#tedious check####
 #(filter(select(df,place_tm,place_tmref,precipitating,pcp_begin),precipitating==TRUE))[860:870,]
 #filter((select(hq, ymdhm, year,month, day, precipitating, switch_to, regime, pcp_begin)),month==11, day==6)[34:40,]
 
-
+# choice ouput ####
 df <- select(df, id, delay:sup_exp, r_shift:shw_begin_pdr)
 
 write.csv(df, 'data_derived.csv')
