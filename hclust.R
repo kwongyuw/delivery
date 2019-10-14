@@ -40,6 +40,7 @@ kmean_cl <- kmeans(user_sc, 10)
 #count(small_cl, kme_cl)
 #table(small_cl$hie_cl, small_cl$kme_cl)
 table(kmean_cl$cluster)
+# Comparing across k-groups
 fviz_nbclust(user_sc, kmeans, method = "wss")
 fviz_nbclust(user_sc, kmeans, method = "silhouette")
 #gap_stat <- clusGap(user_sc, FUN = kmeans, nstart = 25,
@@ -47,6 +48,7 @@ fviz_nbclust(user_sc, kmeans, method = "silhouette")
 #fviz_gap_stat(gap_stat)
 kmean_cl <- kmeans(user_sc, 5)
 small$cl_k5 <- kmean_cl$cluster
+# Plotting the groups
 fviz_cluster(kmean_cl, data=user_sc)
 kmean_cl <- kmeans(user_sc, 9)
 small$cl_k9 <- kmean_cl$cluster

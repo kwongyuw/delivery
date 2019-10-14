@@ -88,11 +88,14 @@ df <- left_join(df,roster30, by = c("require_date"="date", "require_tmref"="tmre
   mutate(ow_ratio = order_n/avai_n30, tm=NULL)
 
 #(manip raw)user frequency (i.e. how familiar w/ the app)
-df <- arrange(df, user_id, place_tm) %>% group_by(user_id) %>% mutate(count=1, user_exp=cumsum(count)) %>% group_by()
+df <- arrange(df, user_id, place_tm) %>% group_by(user_id) %>% 
+        mutate(count=1, user_exp=cumsum(count)) %>% group_by()
 #rider experience (in # orders finished under data period)
-df <- arrange(df, rider_id, read_tm) %>% group_by(rider_id) %>% mutate(rider_exp=cumsum(count)) %>% group_by()
+df <- arrange(df, rider_id, read_tm) %>% group_by(rider_id) %>% 
+        mutate(rider_exp=cumsum(count)) %>% group_by()
 #(manip raw) store frequency (i.e. how experience is restaurant), supplier volume by time
-df <- arrange(df, sup_id, read_tm) %>% group_by(sup_id) %>% mutate(sup_exp=cumsum(count)) %>% group_by()
+df <- arrange(df, sup_id, read_tm) %>% group_by(sup_id) %>% 
+        mutate(sup_exp=cumsum(count)) %>% group_by()
 df <- select(df, -count)
 
 
