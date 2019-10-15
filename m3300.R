@@ -31,6 +31,7 @@ for (i in c(3,5,7)) {
   succeed <- unique(filter(df,inc_atm/100>=thres)$rider_id)
   
   # speed_wt (weight the speed to handle multi-order issue)
+  ## descriptive doesn't immediately supportive
   print(summary(filter(df,rider_id %in% focus, rider_id %in% succeed, 
                        remain_days<=i, inc_atm/100<thres,inc_atm/100>=(thres-100*i))$speed_wt))
   print(summary(filter(df,rider_id %in% focus, rider_id %in% succeed, 
@@ -39,36 +40,33 @@ for (i in c(3,5,7)) {
     ggplot(aes(x=speed,fill=as.factor(inc_atm/100>=thres))) + 
     stat_density(alpha=0.4, position="identity")
   
+  ## regression shows support
+  ### stat sign slower >$3000
+  temp <- filter(df,rider_id %in% focus, rider_id %in% succeed, 
+                 remain_days<=i, inc_atm/100<(thres+100*i),inc_atm/100>=(thres-100*i)) %>%
+    mutate(inc_atm2=inc_atm^2)
+  temp_lm <- lm(speed_wt ~ as.factor(inc_atm/100>thres) + inc_atm + inc_atm2 +
+                  lunch_hr + as.factor(rider_id), 
+                data=temp) %>%
+    summary()
+  print(head(temp_lm$coefficients))
+  #### placebo check: insign for 2600..3500, except stat sign at 3200
+  
   # number of orders (avoid multi-order issue)
-  ## before $3000
+  ## before threshold
   temp <- filter(df,rider_id %in% focus, rider_id %in% succeed,
                  remain_days<=i, inc_atm/100<thres,inc_atm/100>=(thres-100*i))
   table(temp$lunch_hr,temp$dinner_hr) %>%
     print()
-  ## after $3000
+  ## after threshold
   temp <- filter(df,rider_id %in% focus, rider_id %in% succeed,
                  remain_days<=i, inc_atm/100>=thres, inc_atm/100<(thres+100*i))
   table(temp$lunch_hr,temp$dinner_hr) %>%
     print()
-  # when i=3, opposite result if chg the bar to 2700, and diff if 2800 or 2900
-  # placebo check example below (supportive for 2700,2800,2900,2300, contradictive:3400)
+  ### when i=3, opposite result if chg the bar to 2700, and diff if 2800 
+  ### placebo check: supportive for 2700,2800,2300)
 }
-# placebo check example below (supportive for 2700,2800,2900,2300, contradictive:3400)
-focus <- unique(filter(df,remain_days<=i, inc_atm/100>=(2700-100*i), inc_atm/100<(2700+100*i))$rider_id)
-succeed <- unique(filter(df,inc_atm/100>=2700)$rider_id)
-i
-temp <- filter(df,rider_id %in% focus, rider_id %in% succeed,
-               remain_days<=i, inc_atm/100<2700,inc_atm/100>=(2700-100*i))
-table(temp$lunch_hr,temp$dinner_hr) %>%
-  print()
-temp <- filter(df,rider_id %in% focus, rider_id %in% succeed,
-               remain_days<=i, inc_atm/100>=2700, inc_atm/100<(2700+100*i))
-table(temp$lunch_hr,temp$dinner_hr) %>%
-  print()
 
-lm(speed_wt ~ as.factor(inc_atm>3000) + lunch_hr + as.factor(rider_id), 
-   data=temp) %>%
-  summary()
 
 # Exceling month X before/after $3000
 ## speed
