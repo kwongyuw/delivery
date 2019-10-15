@@ -2,6 +2,7 @@
 library(tidyverse)
 library(stargazer)
 
+# Data preparation ####
 source('/Users/kwongyu/Google Drive/dwb/git/delivery/dataprocess_model.R')
 
 df <- group_by(df_all, rider_id, month=month(finish_tm)) %>%
@@ -23,7 +24,7 @@ df$remain_days <- df$month_end - day(df$finish_tm)
 summary(filter(df, inc_atm/100<=3000)$speed)
 summary(filter(df, inc_atm/100>3000)$speed)
 
-# when approaching 3000, seems to slow down (reaching $2400 before 25th day)
+# Difference around threshold ####
 thres<-3000
 for (i in c(3,5,7)) {
   print(paste0(i,"-day window"))
@@ -68,7 +69,7 @@ for (i in c(3,5,7)) {
 }
 
 
-# Exceling month X before/after $3000
+# Exceling month X before/after $3000 ####
 ## speed
 summary(filter(df, !excel_month, inc_atm/100<3000)$speed)
 summary(filter(df, excel_month, inc_atm/100<3000)$speed)
