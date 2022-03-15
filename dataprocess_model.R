@@ -5,7 +5,7 @@ library(data.table)
 library(readxl)
 
 #data_dir <- '/Volumes/GoogleDrive/Team Drives/delivery/data'
-data_dir <- '/Users/kwongyu/Google Drive/dwb/dwb_Data'
+data_dir <- 'dwb_Data'
 
 
 temp = list.files(path = data_dir, pattern="*.xlsx$")
