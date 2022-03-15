@@ -79,7 +79,7 @@ load("roster30.RData")
 #  summarise(order_n=n())
 # ===
 remove(roster30_7, roster30_8, roster30_9, worker)
-#Merge order & roster to df
+#Merge order & roster to df (by 30min slot)
 df$require_tmref <- hour(df$require_tm)+((minute(df$require_tm)>=15)&(minute(df$require_tm)<45))*0.5+(minute(df$require_tm)>=45)*1
 df$require_date <- as.Date(df$require_tm)
 roster30$date <- as.Date(roster30$tm)
@@ -168,6 +168,9 @@ df <- left_join(df,pd, by = c("place_date"="date", "place_tmref"="tmref"),
                 suffix=c("","_pdp"))
 df <- left_join(df,pd, by = c("require_date"="date", "require_tmref"="tmref"), 
                 suffix=c("","_pdr"))
+hqp_cols <- (names(df) %in% names(hq)) # coz hqp uses no suffix as 1st set
+names(df)[hqp_cols] <- paste(names(df)[hqp_cols], "hqp", sep="_")
+remove(hqp_cols)
 
 #tedious check####
 #(filter(select(df,place_tm,place_tmref,precipitating,pcp_begin),precipitating==TRUE))[860:870,]
