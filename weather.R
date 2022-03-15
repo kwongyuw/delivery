@@ -4,11 +4,11 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 
-xs_hourly <- read.table("~/Google Drive/dwb/weather/xiaoshan_15H2.csv", 
+xs_hourly <- read.table("weather/xiaoshan_15H2.csv", 
                         head=TRUE, sep=",")
-hq_hourly <- read.table("~/Google Drive/dwb/weather/hongqiao_15H2.txt", 
+hq_hourly <- read.table("weather/hongqiao_15H2.txt", 
                         head=TRUE)
-pd_hourly <- read.table("~/Google Drive/dwb/weather/pudong_15H2.txt", 
+pd_hourly <- read.table("weather/pudong_15H2.txt", 
                         head=TRUE)
 
 xs_hourly <- rename(xs_hourly, ymdhm=YR..MODAHRMN, wind_dir=DIR, wind_spd=SPD, cloud_ceil=CLG, sky_cov=SKC, L_cloud=L, M_cloud=M, H_cloud=H,
