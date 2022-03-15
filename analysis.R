@@ -4,7 +4,7 @@ library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
 library(stargazer)
 #source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
-source('/Users/kwongyu/Google Drive/dwb/git/delivery/dataprocess_model.R')
+source('git/delivery/dataprocess_model.R')
 
 library(RCurl)
 
@@ -14,12 +14,17 @@ eval(parse(text = script))
 names(crt_df)
 
 
-# create model matrix (ADD VARIABLES HERE)
+# create model matrix (ADD VARIABLES HERE) ####
 model <- crt_df %>% 
-  dplyr::select(delay, prereq, prepare, ride, left_20, left_m, left2, left2_20, left2_m,
-                u_price_avg, tmref_cat,
+  dplyr::select(delay, prereq, prepare, ride, 
+                left_20, left_m, left2, left2_20, left2_m,
+                # left1: dispatch - place order, left2: prereq - (prepare + baidu travel time)
+                u_price_avg, tmref_cat, 
+                # u_price_avg: user average order amount, tmref_cat: lunch 1130-1430 & dinner 1730-2030
                 time, user_exp, dist, price, rider_income, paid, 
+                #time: baidu travel time, user_exp: order# before, dist: baidu dist
                 ow_ratio, u_lunch_avg) %>%
+                #ow_ratio: order-rider by 30 min slot, u_lunch_avg: dummy for pure lunch on avg (>10:00 & <14:00)
   mutate(left_20 = as.factor(left_20), left2_20 = as.factor(left2_20),
          complic = ifelse(time>0, ride/time,NA),
          paid_ratio=ifelse(price>=paid, paid/price, NA))# add covariates
@@ -37,7 +42,7 @@ summary(model)
 dmy <- dummyVars(" ~ .", data = model, fullRank = T)
 fullR_dmy <- data.frame(predict(dmy, newdata = model)) %>% na.omit()
 
-# glm of delay  
+# glm of delay  ####
 # selct your model formula
 names(fullR_dmy)
 
@@ -46,6 +51,7 @@ pairs(dplyr::select(play, delay, prereq, prepare, ride, time), cex=0.1)
 #most interesting one
 model_1 <- formula(delay ~ prereq +prepare+price + tmref_catlunch + tmref_catother + 
                      user_exp + ow_ratio + rider_income*complic*dist)
+# user_exp: order# before, ow_ratio: order-rider by 30min slot, 
 
 simple <- lm(model_1, data = fullR_dmy)
 summary(simple)
@@ -73,7 +79,7 @@ lm3 <- lm(delay ~ prereq +prepare + price + tmref_catlunch + tmref_catother +
 stargazer(lm1, lm2, lm3, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
 
 
-############# Synthetic group 
+# Synthetic group ####
 library(Matching)
 # take random sample for testing 
 r_sam <- fullR_dmy %>%
@@ -138,7 +144,7 @@ full_ate <- lm (delay ~ left2_20.1 + prepare + price + tmref_catlunch + tmref_ca
 stargazer(lm1, full_ate, type="text", report="cvt*", omit.stat=c("f", "ser", "rsq"))
 
 
-####PCA EXPLORATORY
+#PCA EXPLORATORY ####
 names(model)
 pca_dat <- crt_df %>%
   dplyr::select(prereq, prepare, ride, left2_m,
