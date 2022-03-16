@@ -164,3 +164,63 @@ autoplot(deliver_pca, data = pca_dat, loadings = T)
 
 autoplot(kmeans(pca_dat, 5), data = pca_dat, frame = TRUE, size=0.1)
 
+
+# IV Exploratory ####
+library(AER)
+## if looking at the abs diff from required time, nothing works 
+## (possibly coz of company policy to arrive 10mins earlier than required time?)
+temp <- filter(crt_df, sup_id %in% sample(unique(crt_df$sup_id), 200)) %>%
+  mutate(disap = delay+600, 
+         disap = ifelse(disap >-300 & disap <300, 
+                        0, disap),
+         sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
+         sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp))
+
+ivreg(abs(disap) ~ prereq +prepare+price +  
+        rider_exp + user_exp + onhand + ow_ratio + rider_income + dist
+      | 
+        sudden_rain_pdp +prepare+price +  
+        rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+      data=temp) %>%
+  summary()
+
+## if looking at reducing delay, it works with full rain-related indicators
+temp <- crt_df %>%
+  mutate(disap = delay+600, 
+         disap = ifelse(disap >-300 & disap <300, 
+                        0, disap),
+         sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
+         sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp))
+
+lm1 <- lm((delay) ~ prereq +prepare+price +  
+            rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+          data=temp)
+lm2 <- lm(prereq ~ sudden_rain_hqp + sudden_rain_pdp +prepare+price +  
+            rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+          data=temp)
+lm3 <- lm(prereq ~ sudden_rain_hqp + sudden_rain_pdp + wind_spd_hqp + visib_hqp + precipitating_hqp + rain_hqp + 
+            srain_hqp + shower_hqp + shower_sl_hqp + rain_sl_cnt_hqp + mist_hqp + 
+            wind_spd_pdp + visib_pdp + precipitating_pdp + rain_pdp + 
+            srain_pdp + shower_pdp + shower_sl_pdp + rain_sl_cnt_pdp + mist_pdp + +prepare+price +  
+            rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+          data=temp)
+lm4 <- ivreg((delay) ~ prereq + 
+               prepare+price +  
+               rider_exp + user_exp + onhand + ow_ratio + rider_income + dist
+             | # sudden rain in Hongqiao & Pudong (why Hongqiao is negative?)
+               sudden_rain_hqp + sudden_rain_pdp + 
+               prepare+price +  
+               rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+             data=temp)
+lm5 <- ivreg((delay) ~ prereq +
+               prepare+price +  
+               rider_exp + user_exp + onhand + ow_ratio + rider_income + dist
+             | # all rain-related indicator
+               sudden_rain_hqp + sudden_rain_pdp + wind_spd_hqp + visib_hqp + precipitating_hqp + rain_hqp + 
+               srain_hqp + shower_hqp + shower_sl_hqp + rain_sl_cnt_hqp + mist_hqp + 
+               wind_spd_pdp + visib_pdp + precipitating_pdp + rain_pdp + 
+               srain_pdp + shower_pdp + shower_sl_pdp + rain_sl_cnt_pdp + mist_pdp +
+               prepare+price +  
+               rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+             data=temp)
+stargazer(lm1, lm2, lm3, lm4, lm5, type="text", report="cvt*", omit.stat=c("ser", "rsq"))
