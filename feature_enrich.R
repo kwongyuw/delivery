@@ -5,8 +5,8 @@ library(lubridate)
 library(hms)
 
 #loading all xlsx
-setwd('~/Google Drive/dwb/dwb_Data')
-data_dir <- '~/Google Drive/dwb/dwb_Data'
+setwd('/Users/kwongyu/OneDrive - UW/Projects/dwb')
+data_dir <- 'dwb_Data'
 temp = list.files(path = data_dir, pattern="*.xlsx$")
 df <- do.call(bind_rows,
                  lapply(file.path(data_dir ,temp), read_excel, range = cell_cols(1:21)))
@@ -38,7 +38,7 @@ df <- mutate(df, delay=as.numeric(finish_tm)-as.numeric(require_tm),
 #(manip raw)rider frequency (i.e. how experienced is rider)
 #rider-order ratio (#riders active, #orders to be delivered every 30mins) ####
 ###too large to manipulate for work-order ratio(ETA: 5hrs), load from roster30.RData instead 
-load("roster30.RData")
+load(paste(data_dir, "roster30.RData", sep="/"))
 ### or run the bunch below
 #==========detailed 1 day example (non-run-able)
 # make up rider availability
@@ -156,21 +156,7 @@ user <- group_by(df, user_id) %>%
 
 df <- left_join(df, user, by = c("user_id"))
 
-#Weather: NCDC_NOAA on Hongqiao, hourly ####
-source("~/Google Drive/dwb/git/delivery/weather.R")
-df <- mutate(df, place_date=as.Date(place_tm),
-             place_tmref = hour(place_tm)+((minute(place_tm)>=15)&(minute(place_tm)<45))*0.5+(minute(place_tm)>=45)*1)
-df <- left_join(df,hq, by = c("place_date"="date", "place_tmref"="tmref"), 
-                suffix=c("","_hqp"))
-df <- left_join(df,hq, by = c("require_date"="date", "require_tmref"="tmref"), 
-                suffix=c("","_hqr"))
-df <- left_join(df,pd, by = c("place_date"="date", "place_tmref"="tmref"), 
-                suffix=c("","_pdp"))
-df <- left_join(df,pd, by = c("require_date"="date", "require_tmref"="tmref"), 
-                suffix=c("","_pdr"))
-hqp_cols <- (names(df) %in% names(hq)) # coz hqp uses no suffix as 1st set
-names(df)[hqp_cols] <- paste(names(df)[hqp_cols], "hqp", sep="_")
-remove(hqp_cols)
+
 
 #tedious check####
 #(filter(select(df,place_tm,place_tmref,precipitating,pcp_begin),precipitating==TRUE))[860:870,]
