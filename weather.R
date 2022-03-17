@@ -186,11 +186,11 @@ pd$shw_beginref[!(pd$shower)] <- NA
 pd$pcp_begin[!(pd$precipitating)] <- NA
 pd$pcp_beginref[!(pd$precipitating)] <- NA
 
-xs <- select(group_by(xs), tm:tmref, wind_spd, visib, precipitating, rain:rain_sl_cnt,
+xs <- select(group_by(xs), tm:tmref, temp, wind_spd, visib, precipitating, rain:rain_sl_cnt,
              mist, pcp_begin, shw_begin)
-hq <- select(group_by(hq), tm:tmref, wind_spd, visib, precipitating, rain:rain_sl_cnt,
+hq <- select(group_by(hq), tm:tmref, temp, wind_spd, visib, precipitating, rain:rain_sl_cnt,
              mist, pcp_begin, shw_begin)
-pd <- select(group_by(pd), tm:tmref, wind_spd, visib, precipitating, rain:rain_sl_cnt,
+pd <- select(group_by(pd), tm:tmref, temp, wind_spd, visib, precipitating, rain:rain_sl_cnt,
              mist, pcp_begin, shw_begin)
 
 #switch_time <- select(filter(xs,switch_pcp==1),ymdhm, year, month, day, hr,min, place_tmref, precipitating, switch_pcp) %>%
