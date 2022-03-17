@@ -10,9 +10,12 @@ hq_hourly <- read.table("weather/hongqiao_15H2.txt",
                         head=TRUE)
 pd_hourly <- read.table("weather/pudong_15H2.txt", 
                         head=TRUE)
+# see surface_hourly.txt for code reference
 
 xs_hourly <- rename(xs_hourly, ymdhm=YR..MODAHRMN, wind_dir=DIR, wind_spd=SPD, cloud_ceil=CLG, sky_cov=SKC, L_cloud=L, M_cloud=M, H_cloud=H,
+                    # SPD & GUS = WIND SPEED & GUST IN MILES PER HOUR 
                     visib=VSB, temp=TEMP, dewp=DEWP, sealv_pres=SLP, alti=ALT, station_pres=STP, tmax=MAX, tmin=MIN,
+                    # VSB = VISIBILITY IN STATUTE MILES TO NEAREST TENTH 
                     precip_1h=PCP01, precip_6h=PCP06, precip_24h=PCP24, precip_xxh=PCPXX, snow_depth=SD)
 hq_hourly <- rename(hq_hourly, ymdhm=YR..MODAHRMN, wind_dir=DIR, wind_spd=SPD, cloud_ceil=CLG, sky_cov=SKC, L_cloud=L, M_cloud=M, H_cloud=H,
                     visib=VSB, temp=TEMP, dewp=DEWP, sealv_pres=SLP, alti=ALT, station_pres=STP, tmax=MAX, tmin=MIN,
@@ -69,16 +72,17 @@ pd_hourly$tmin[pd_hourly$tmin=="***"]<-NA
 
 xs <- select(xs_hourly, ymdhm, wind_spd, visib, MW:MW.2, temp, tmax, tmin, precip_6h:precip_xxh) %>%
   separate(ymdhm,c("year", "month", "day", "hr", "min"), sep=c(4,6,8,10), remove=FALSE,convert=TRUE) %>%
-  mutate(precipitating=((MW %in% c(50:99))|(MW.1 %in% c(50:99))|(MW.2 %in% c(50:99))), 
-         drizzle=((MW %in% c(50:59))|(MW.1 %in% c(50:59))|(MW.2 %in% c(50:59))), 
-         rain=((MW %in% c(60:69))|(MW.1 %in% c(60:69))|(MW.2 %in% c(60:69))), 
-         srain=((MW %in% c(70:79))|(MW.1 %in% c(70:79))|(MW.2 %in% c(70:79))),
-         shower=((MW %in% c(80:99))|(MW.1 %in% c(80:99))|(MW.2 %in% c(80:99))),
-         shower_sl=((MW %in% c(80))|(MW.1 %in% c(80))|(MW.2 %in% c(80))), 
-         rain_sl_cnt=((MW %in% c(61))|(MW.1 %in% c(61))|(MW.2 %in% c(61))),
-         rain_sl_itm=((MW %in% c(60))|(MW.1 %in% c(60))|(MW.2 %in% c(60))),
-         mist=((MW %in% c(10))|(MW.1 %in% c(10))|(MW.2 %in% c(10))),
-         haze=((MW %in% c(5))|(MW.1 %in% c(5))|(MW.2 %in% c(5)))) %>%
+  # MW: MANUALLY OBSERVED PRESENT WEATHER
+  mutate(precipitating=((MW %in% c(50:99))|(MW.1 %in% c(50:99))|(MW.2 %in% c(50:99))), # 50-99  Precipitation at the station at the time of observation
+         drizzle=((MW %in% c(50:59))|(MW.1 %in% c(50:59))|(MW.2 %in% c(50:59))), #50-59  Drizzle
+         rain=((MW %in% c(60:69))|(MW.1 %in% c(60:69))|(MW.2 %in% c(60:69))), # 60-69  Rain
+         srain=((MW %in% c(70:79))|(MW.1 %in% c(70:79))|(MW.2 %in% c(70:79))), #70-79  Solid precipitation not in showers
+         shower=((MW %in% c(80:99))|(MW.1 %in% c(80:99))|(MW.2 %in% c(80:99))), #80-99  Showery precipitation, or precipitation with current or recent thunderstorm
+         shower_sl=((MW %in% c(80))|(MW.1 %in% c(80))|(MW.2 %in% c(80))), #80: Rain shower(s), slight
+         rain_sl_cnt=((MW %in% c(61))|(MW.1 %in% c(61))|(MW.2 %in% c(61))), #61: Rain, not freezing, continuous, slight at time of observation
+         rain_sl_itm=((MW %in% c(60))|(MW.1 %in% c(60))|(MW.2 %in% c(60))), #60: Rain, not freezing, intermittent, slight at time of observation
+         mist=((MW %in% c(10))|(MW.1 %in% c(10))|(MW.2 %in% c(10))), # 10: Mist
+         haze=((MW %in% c(5))|(MW.1 %in% c(5))|(MW.2 %in% c(5)))) %>% # 05: Haze
   type.convert() %>%
   mutate(tm=ymd_hm(ymdhm), date=as.Date(tm))
 xs$ymdhm <- as.character(xs$ymdhm)
