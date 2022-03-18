@@ -196,31 +196,24 @@ temp <- crt_df %>%
 lm1 <- lm((delay) ~ prereq +prepare+price +  
             rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
           data=temp)
-lm2 <- lm(prereq ~ sudden_rain_hqp + sudden_rain_pdp +prepare+price +  
+lm2 <- lm(prereq ~ temp_hqp + temp_pdp +prepare+price +  
             rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
           data=temp)
-lm3 <- lm(prereq ~ sudden_rain_hqp + sudden_rain_pdp + wind_spd_hqp + visib_hqp + precipitating_hqp + rain_hqp + 
-            srain_hqp + shower_hqp + shower_sl_hqp + rain_sl_cnt_hqp + mist_hqp + 
-            wind_spd_pdp + visib_pdp + precipitating_pdp + rain_pdp + 
-            srain_pdp + shower_pdp + shower_sl_pdp + rain_sl_cnt_pdp + mist_pdp + +prepare+price +  
+lm3 <- lm(prereq ~ temp_hqp + temp_pdp + sudden_rain_hqp + sudden_rain_pdp + prepare+price +  
             rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
           data=temp)
 lm4 <- ivreg((delay) ~ prereq + 
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist
-             | # sudden rain in Hongqiao & Pudong (why Hongqiao is negative?)
-               sudden_rain_hqp + sudden_rain_pdp + 
+             | temp_hqp + temp_pdp + # temp comes from data_derived2.csv
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
              data=temp)
 lm5 <- ivreg((delay) ~ prereq +
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist
-             | # all rain-related indicator
-               sudden_rain_hqp + sudden_rain_pdp + wind_spd_hqp + visib_hqp + precipitating_hqp + rain_hqp + 
-               srain_hqp + shower_hqp + shower_sl_hqp + rain_sl_cnt_hqp + mist_hqp + 
-               wind_spd_pdp + visib_pdp + precipitating_pdp + rain_pdp + 
-               srain_pdp + shower_pdp + shower_sl_pdp + rain_sl_cnt_pdp + mist_pdp +
+             | temp_hqp + temp_pdp + sudden_rain_hqp + sudden_rain_pdp +
+               wind_spd_hqp + wind_spd_pdp + 
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
              data=temp)
