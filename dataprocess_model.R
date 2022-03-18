@@ -35,6 +35,23 @@ df_all <- left_join(a_df, sup, by=c('sup_id', 'from_tel', 'from_addr'))
 # features 
 df_feat <- read.csv(file.path(data_dir ,'data_derived.csv'), stringsAsFactors = F)
 
+#Weather: NCDC_NOAA on Hongqiao, hourly (maybe generate a csv instead?) ####
+source("git/delivery/weather.R")
+df <- mutate(df, place_date=as.Date(place_tm), require_date=as.Date(require_tm),
+             place_tmref = hour(place_tm)+((minute(place_tm)>=15)&(minute(place_tm)<45))*0.5+(minute(place_tm)>=45)*1,
+             require_tmref = hour(require_tm)+((minute(require_tm)>=15)&(minute(require_tm)<45))*0.5+(minute(require_tm)>=45)*1)
+df <- left_join(df,hq, by = c("place_date"="date", "place_tmref"="tmref"), 
+                suffix=c("","_hqp"))
+df <- left_join(df,hq, by = c("require_date"="date", "require_tmref"="tmref"), 
+                suffix=c("","_hqr"))
+df <- left_join(df,pd, by = c("place_date"="date", "place_tmref"="tmref"), 
+                suffix=c("","_pdp"))
+df <- left_join(df,pd, by = c("require_date"="date", "require_tmref"="tmref"), 
+                suffix=c("","_pdr"))
+hqp_cols <- (names(df) %in% names(hq)) # coz hqp uses no suffix as 1st set
+names(df)[hqp_cols] <- paste(names(df)[hqp_cols], "hqp", sep="_")
+remove(hqp_cols)
+
 #join
 df_all <- left_join(df_all , df_feat, by='id')
 
