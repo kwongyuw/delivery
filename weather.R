@@ -195,3 +195,5 @@ pd <- select(group_by(pd), tm:tmref, temp, wind_spd, visib, precipitating, rain:
 
 #switch_time <- select(filter(xs,switch_pcp==1),ymdhm, year, month, day, hr,min, place_tmref, precipitating, switch_pcp) %>%
 #  mutate()
+
+remove(xs_hourly, hq_hourly, pd_hourly) # leave only xs,hq,pd for IV
