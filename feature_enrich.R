@@ -80,8 +80,9 @@ load(paste(data_dir, "roster30.RData", sep="/"))
 # ===
 remove(roster30_7, roster30_8, roster30_9, worker)
 #Merge order & roster to df (by 30min slot)
-df$require_tmref <- hour(df$require_tm)+((minute(df$require_tm)>=15)&(minute(df$require_tm)<45))*0.5+(minute(df$require_tm)>=45)*1
-df$require_date <- as.Date(df$require_tm)
+df <- mutate(df, place_date=as.Date(place_tm), require_date=as.Date(require_tm), # time reference for 30min slots (ow ratio & weather IV)
+             place_tmref = hour(place_tm)+((minute(place_tm)>=15)&(minute(place_tm)<45))*0.5+(minute(place_tm)>=45)*1,
+             require_tmref = hour(require_tm)+((minute(require_tm)>=15)&(minute(require_tm)<45))*0.5+(minute(require_tm)>=45)*1)
 roster30$date <- as.Date(roster30$tm)
 df <- left_join(df,roster30, by = c("require_date"="date", "require_tmref"="tmref")) %>%
   left_join(order30, by=c("require_date"="read_date", "require_tmref")) %>%
@@ -111,6 +112,8 @@ multi_order <- drop_na(df,arrive_tm) %>%
 ##also, maybe time consuming? 0.3*60=18mins
 rids <- unique(multi_order$rider_id)
 tl <- Sys.time()
+print(tl)
+print(paste("expect:", length(unique(multi_order$id))/6879*23/3600))
 onhandXdur <- list()
 for (r in c(1:length(rids))) {
   short <- filter(multi_order,rider_id==rids[r])
@@ -163,6 +166,7 @@ df <- left_join(df, user, by = c("user_id"))
 #filter((select(hq, ymdhm, year,month, day, precipitating, switch_to, regime, pcp_begin)),month==11, day==6)[34:40,]
 
 # choice ouput ####
-df <- select(df, id, delay:onhand, r_shift:shw_begin_pdr)
+df <- select(df, id, delay:onhand, r_shift:names(df)[ncol(df)]) # names(df)[ncol(df)] = to the last col
 
-write.csv(df, 'data_derived.csv')
+write.csv(df, file.path(data_dir, 'data_derived.csv'))
+
