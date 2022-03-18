@@ -95,9 +95,4 @@ crt_df$o_lon[crt_df$o_lon<121.3] <- NA
 crt_df$d_lon[crt_df$d_lon>121.7] <- NA
 crt_df$d_lon[crt_df$d_lon<121.3] <- NA
 
-rm(a_df)
-rm(df_feat)
-rm(dist_df)
-rm(or_df)
-rm(sup)
-rm(temp)
+rm(a_df, df_feat, df_feat_iv,dist_df, or_df, sup, temp)
