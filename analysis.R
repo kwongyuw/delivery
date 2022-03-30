@@ -218,3 +218,20 @@ lm5 <- ivreg((delay) ~ prereq +
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
              data=temp)
 stargazer(lm1, lm2, lm3, lm4, lm5, type="text", report="cvt*", omit.stat=c("ser", "rsq"))
+
+# among 30min slots, slots w/ earlier call in does have more orders delivered (and on-time)
+slots_30m <- ungroup(temp) %>%
+  group_by(require_date, require_tmref) %>%
+  summarize(avg_prereq=mean(prereq, na.rm=TRUE), count=n(), count_ontime=sum(delay < -600, na.rm=TRUE)) %>%
+  ungroup()
+
+slots_30m %>%
+  ggplot(aes(x=avg_prereq, y=count)) + geom_point(alpha=0.1) + geom_smooth() +
+  geom_point(aes(y=count_ontime), color="red", alpha=0.1) + geom_smooth(aes(y=count_ontime), color="red")
+
+# calling in earlier has slightly more time after leaving restaurants
+sample_n(temp, 10000) %>%
+  mutate(rec=as.numeric(require_tm - receive_tm, units="secs"), 
+         lea=as.numeric(require_tm - leave_tm, units="secs")) %>%
+  filter(rec > -5000) %>%
+  ggplot(aes(x=prereq, y=lea)) + geom_point(alpha=0.1) + geom_smooth()
