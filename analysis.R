@@ -187,9 +187,8 @@ ivreg(abs(disap) ~ prereq +prepare+price +
 
 ## if looking at reducing delay, it works with full rain-related indicators
 temp <- crt_df %>%
-  mutate(disap = delay+600, 
-         disap = ifelse(disap >-300 & disap <300, 
-                        0, disap),
+  mutate(disap = delay+600, disap = ifelse(disap >-300 & disap <300, 0, disap), # not helpful looking at range
+         delay_cens = pmax(0, delay), # only looking at the time being late
          sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
          sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp))
 
@@ -209,11 +208,10 @@ lm4 <- ivreg((delay) ~ prereq +
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
              data=temp)
-lm5 <- ivreg((delay) ~ prereq +
+lm5 <- ivreg((delay_cens) ~ prereq +
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist
-             | temp_hqp + temp_pdp + sudden_rain_hqp + sudden_rain_pdp +
-               wind_spd_hqp + wind_spd_pdp + 
+             | temp_hqp + temp_pdp +
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
              data=temp)
@@ -235,3 +233,16 @@ sample_n(temp, 10000) %>%
          lea=as.numeric(require_tm - leave_tm, units="secs")) %>%
   filter(rec > -5000) %>%
   ggplot(aes(x=prereq, y=lea)) + geom_point(alpha=0.1) + geom_smooth()
+
+# categorize prereq to see the difference
+call_05m <- mutate(temp, prereq_05m = as.factor(prereq %/% (60*5)),
+                   rece = as.numeric(require_tm - receive_tm, units="secs"))
+call_05m %>%
+  ggplot(aes(x=prereq_05m, y=delay)) + # delay decreases to -20mins
+  geom_boxplot(varwidth = TRUE) + 
+  coord_cartesian(ylim=c(-2000, 0))
+
+ call_05m %>%
+  filter(rece >= 0) %>% # 0.1% observations 
+  ggplot(aes(x=prereq_05m, y=rece)) + # restaurant receive info earlier
+  geom_boxplot(varwidth = TRUE)
