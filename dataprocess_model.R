@@ -21,6 +21,7 @@ temp
 dist_df <- do.call(bind_rows,
                    lapply(file.path(data_dir ,temp), read.csv, stringsAsFactors = FALSE)) %>%
   unique(.)
+# many orders in Aug 1-17 are missing in distance .csv files (options: 1) generalize from collected addresses, 2) collect again)
 
 
 # Join to main data using "id" 
