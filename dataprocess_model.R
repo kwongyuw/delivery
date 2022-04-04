@@ -25,7 +25,9 @@ dist_df <- do.call(bind_rows,
 
 
 # Join to main data using "id" 
-a_df <- left_join(or_df, dist_df, by = "id")
+a_df <- left_join(or_df, 
+                  mutate(dist_df, time=time/60), # std to mins
+                  by = "id")
 
 # restaurant information 
 sup <- read.csv(file.path(data_dir ,'sup.csv'), stringsAsFactors = F)
