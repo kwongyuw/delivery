@@ -21,12 +21,12 @@ df <- do.call(bind_rows,
 
 #(manip raw) order features
 #timing info ####
-df <- mutate(df, delay=as.numeric(finish_tm)-as.numeric(require_tm), 
-             prereq=as.numeric(require_tm)-as.numeric(place_tm), 
-             prepare=as.numeric(leave_tm)-as.numeric(dipatch_tm), 
-             ride=as.numeric(finish_tm)-as.numeric(leave_tm), 
+df <- mutate(df, delay=as.numeric(finish_tm - require_tm, units="mins"), 
+             prereq=as.numeric(require_tm - place_tm, units="mins"), 
+             prepare=as.numeric(leave_tm- dipatch_tm, units="mins"), 
+             ride=as.numeric(finish_tm - leave_tm, units="mins"), 
              allow_cook=prereq-ride, #cooka=as.numeric(cookable_tm)-as.numeric(cook_tm), 
-             left1=as.numeric(dipatch_tm)-as.numeric(place_tm)) #left3=prereq-(dish_longer*60 + ride), #left2=prereq-(cooka+ride), 
+             left1=as.numeric(dipatch_tm - place_tm, units="mins")) #left3=prereq-(dish_longer*60 + ride), #left2=prereq-(cooka+ride), 
               #can't use prereq-(prepare+ride) = (dipatch - place) - delay -> 0.9 R2 for delay regression
 
 #weather when placing order (non-run-able)
@@ -85,7 +85,7 @@ df <- mutate(df, place_date=as.Date(place_tm), require_date=as.Date(require_tm),
              require_tmref = hour(require_tm)+((minute(require_tm)>=15)&(minute(require_tm)<45))*0.5+(minute(require_tm)>=45)*1)
 roster30$date <- as.Date(roster30$tm)
 df <- left_join(df,roster30, by = c("require_date"="date", "require_tmref"="tmref")) %>%
-  left_join(order30, by=c("require_date"="read_date", "require_tmref")) %>%
+  left_join(ungroup(order30), by=c("require_date"="read_date", "require_tmref")) %>% # avoid group error in order30
   mutate(ow_ratio = order_n/avai_n30, tm=NULL)
 
 #(manip raw)user frequency (i.e. how familiar w/ the app) ####
@@ -107,7 +107,7 @@ multi_order <- drop_na(df,arrive_tm) %>%
           mutate(addorder=if_else(action=="arrive_tm",1,-1)) %>%
           group_by(rider_id) %>%
           mutate(onhand=cumsum(addorder), 
-                 onhandXdur=onhand*as.numeric(lead(tm)-tm)) %>%
+                 onhandXdur=onhand*as.numeric(lead(tm)-tm, units="mins")) %>%
           ungroup()
 ##also, maybe time consuming? 0.3*60=18mins
 rids <- unique(multi_order$rider_id)
@@ -133,12 +133,12 @@ print(Sys.time()-tl)
 
 df <- left_join(df,select(onhandXdur,id,onhandXdur),
                 by="id") %>%
-        mutate(onhand = onhandXdur/as.numeric(finish_tm-arrive_tm))
+        mutate(onhand = onhandXdur/as.numeric(finish_tm-arrive_tm, units="mins"))
 
 #Number of orders finished in each shift ####
 df <- group_by(df, rider_id, read_date=as.Date(read_tm)) %>%
   arrange(read_tm) %>%
-  mutate(r_new_shift=ifelse(is.na(lag(finish_tm)),FALSE,((as.numeric(read_tm)-as.numeric(lag(finish_tm)))/3600)>1), 
+  mutate(r_new_shift=ifelse(is.na(lag(finish_tm)),FALSE,((as.numeric(read_tm - lag(finish_tm), units="secs"))/3600)>1), 
          r_shift=cumsum(r_new_shift)) %>%
   group_by()
 rider <- group_by(df) %>% group_by(rider_id, read_date, r_shift) %>% 
@@ -154,8 +154,10 @@ df <- left_join(df, rider, by = c("rider_id", "read_date", "r_shift"))
 user <- group_by(df, user_id) %>%
   arrange(user_id, finish_tm) %>%
   summarize(u_n_tt=n(), u_rinc_avg=mean(rider_income), u_delay_avg=mean(delay),
-            u_lunch_avg=as.factor(mean(hour(finish_tm))>10 & mean(hour(finish_tm))<14), u_prereq_avg = mean(require_tm - place_tm), 
-            u_price_avg=mean(price), u_price_sd=sd(price), u_span=max(finish_tm)-min(finish_tm))
+            u_lunch_avg=as.factor(mean(hour(require_tm))>10 & mean(hour(require_tm))<14), # a lunch user on avg? (thou dataprocess_model uses require_tm 11.5-14.5 for lunch & 17.5-20.5 for dinner)
+            u_prereq_avg = mean(as.numeric(require_tm - place_tm, units="mins")), 
+            u_price_avg=mean(price), u_price_sd=sd(price), 
+            u_span=as.numeric(max(finish_tm)-min(finish_tm), units="days")) # u_span: the span user has used for ordering
 
 df <- left_join(df, user, by = c("user_id"))
 
