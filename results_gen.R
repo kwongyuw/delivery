@@ -12,9 +12,11 @@ df_all %>%
   ggplot(aes(x=require_tm)) + geom_histogram()
 
 ## order level
-select(crt_df, prereq, dist, time, delay, rider_income, price) %>% #
+select(crt_df, prereq, prepare, ride, delay, rider_income, price) %>% # avoid dist & time for now
   as.data.frame() %>%
-  stargazer(type="latex", iqr=TRUE, median=TRUE, min.max=FALSE)
+  stargazer(summary.stat = c("n", "mean", "sd", 
+                             "p25", "median", "p75", "max"),
+            type="latex")
 
 ## user level
 select(crt_df, user_id, u_delay_avg, u_lunch_avg, u_n_tt, u_prereq_avg, u_price_avg, u_price_sd, u_rinc_avg, u_span) %>%
