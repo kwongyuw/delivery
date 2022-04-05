@@ -85,7 +85,7 @@ crt_df <- df_all %>%
   filter(delay < 100, prereq > 0 & prereq < 100, # in minutes #prereq>2100, prereq<3600
          left_m < 240,
          price>0, price <= 15000, paid <= 15000, rider_income <= 1300,
-         ride <= 1500, dist <= 140000, time <= 200,
+         ride <= 1500, dist <= 140000, time <= 200, # clean up api dist&time by rider_income more thoroughly (0-2km: $5, then $2/km, see Memo)
          user_exp < 75, u_price_avg<15000,
          !is.infinite(ow_ratio), ow_ratio<3)
 #remove non-Shanghai coordinates 
