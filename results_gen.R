@@ -21,6 +21,7 @@ sg_ss <- function(df, stats=c("n", "mean", "sd",
 
 ## order level
 select(crt_df, prereq, prepare, ride, delay, rider_income, price) %>% # avoid dist & time for now
+  mutate(rider_income=rider_income/100, price=price/100) %>%
   as.data.frame() %>%
   sg_ss(disp="latex")
 
@@ -67,8 +68,19 @@ temp <- crt_df %>%
 lm1 <- lm((delay) ~ prereq +prepare+price +  
             rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
           data=temp)
+lm1i <- lm((delay) ~ prereq +prepare+price +  
+             rider_exp + user_exp + rider_income,
+          data=temp)
+lm1ii <- lm((delay) ~ prereq + price + rider_income,
+           data=temp)
+lm1iii <- lm((delay) ~ prereq +prepare+price +  
+            rider_exp + user_exp + onhand + rider_income,
+          data=temp)
+lm1iv <- lm((delay) ~ prereq +prepare+price +  
+            rider_exp + user_exp + onhand + ow_ratio + rider_income,
+          data=temp)
 ### include few more different specifications of plain OLS
-stargazer(lm1, report="cvt*", omit.stat=c("ser", "rsq"),
+stargazer(lm1ii, lm1i, lm1iii, lm1iv,lm1, report="cvt*", omit.stat=c("ser", "rsq"),
           no.space=TRUE, type="latex")
 
 
@@ -93,7 +105,7 @@ lm5 <- ivreg((delay) ~ prereq +
                prepare+price +  
                rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
              data=temp)
-stargazer(lm2, lm3, lm4, lm5, report="cvt*", omit.stat=c("ser", "rsq"),
+stargazer(lm4, lm5, lm2, lm3, report="cvt*", omit.stat=c("ser", "rsq"),
           no.space=TRUE, type="latex")
 
 ## only the time being late
@@ -121,30 +133,53 @@ stargazer(lm1b, lm4b, lm5b, report="cvt*", omit.stat=c("ser", "rsq"),
 ### more are completed and on-tim
 # among 30min slots, slots w/ earlier call in does have more orders delivered (and on-time)
 slots_30m <- ungroup(temp) %>%
-  group_by(require_date, require_tmref) %>%
-  summarize(avg_prereq=mean(prereq, na.rm=TRUE), count=n(), count_ontime=sum(delay < -10, na.rm=TRUE)) %>%
+  group_by(require_date, require_tmref, tmref_cat) %>%
+  summarize(avg_prereq=mean(prereq, na.rm=TRUE), 
+            count=n(), count_ontime=sum(delay < 0, na.rm=TRUE)) %>%
+  mutate(Lunch=(tmref_cat=="lunch")) %>%
   ungroup()
 
-slots_30m %>%
-  ggplot(aes(x=avg_prereq, y=count)) + geom_point(alpha=0.1) + geom_smooth() +
-  geom_point(aes(y=count_ontime), color="red", alpha=0.1) + geom_smooth(aes(y=count_ontime), color="red")
+#### all orders
+slots_30m %>% filter(avg_prereq<60) %>%
+  ggplot(aes(x=avg_prereq, y=count, color=Lunch)) + geom_point(alpha=0.1) + geom_smooth() +
+  labs(x="Average Pre-require time within 30-min slots", y="Orders Completed") 
 
-# calling in earlier has slightly more time after leaving restaurants
+#### delay<0 orders
+slots_30m %>% filter(avg_prereq<60) %>%
+  ggplot(aes(x=avg_prereq, y=count_ontime, color=Lunch)) + geom_point(alpha=0.1) + geom_smooth() +
+  labs(x="Average Pre-require time within 30-min slots", y="Orders Completed")
+
+
 sample_n(temp, 10000) %>%
   mutate(rec=as.numeric(require_tm - receive_tm, units="mins"), 
          lea=as.numeric(require_tm - leave_tm, units="mins")) %>%
-  filter(rec > -80) %>%
   ggplot(aes(x=prereq, y=lea)) + geom_point(alpha=0.1) + geom_smooth()
 
-# categorize prereq to see the difference
-call_05m <- mutate(temp, prereq_05m = as.factor(prereq %/% 5),
-                   rece = as.numeric(require_tm - receive_tm, units="mins"))
-call_05m %>%
-  ggplot(aes(x=prereq_05m, y=delay)) + # delay decreases to -20mins
-  geom_boxplot(varwidth = TRUE) + 
-  coord_cartesian(ylim=c(-30, 0))
+# categorize prereq to see the difference in trends
+call_05m <- mutate(temp, prereq_05m = as.factor((prereq %/% 5)*5),
+                   rece = as.numeric(require_tm - receive_tm, units="mins"),
+                   leav = as.numeric(require_tm - leave_tm, units="mins"))
 
+## calling in earlier has slightly more time after leaving restaurants
 call_05m %>%
-  filter(rece >= 0) %>% # 0.1% observations 
+  ggplot(aes(x=prereq_05m, y=leav)) + # restaurant receive info earlier
+  geom_boxplot(varwidth = TRUE) + 
+  coord_cartesian(ylim=c(0,50)) +
+  labs(x="Pre-require time (in 5-min slots)", y="Time left after leaving restaurant")
+
+## more time when restaurant receives
+call_05m %>%
+  #  filter(rece >= 0) %>% # 0.1% observations 
   ggplot(aes(x=prereq_05m, y=rece)) + # restaurant receive info earlier
-  geom_boxplot(varwidth = TRUE)
+  geom_boxplot(varwidth = TRUE) +
+  coord_cartesian(ylim=c(25,75)) +
+  labs(x="Pre-require time (in 5-min slots)", y="Time left after restaurant receives")
+
+
+## delay pushes to -15mins (ie arrive 15min earlier)
+call_05m %>%
+  ggplot(aes(x=prereq_05m, y=delay)) + 
+  geom_boxplot(varwidth = TRUE) + 
+  coord_cartesian(ylim=c(-30, 0))  +
+  labs(x="Pre-require time (in 5-min slots)", y="Delay time")
+
