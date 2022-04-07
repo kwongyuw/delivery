@@ -2,7 +2,7 @@ library(caret)
 library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
 library(stargazer)
-library(psych)
+library(AER)
 #source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 setwd("/Users/kwongyu/OneDrive - UW/Projects/dwb")
 source('git/delivery/dataprocess_model.R')
@@ -50,7 +50,7 @@ select(crt_df, sup_id, sup_exp) %>%
 # why the min exp can be as many as 716 orders in restaurant and 226 in riders?
 # <- because they accumulate exp in Aug 1-17
 
-# graphs ####
+# descriptive graphs ####
 ## peak hours (use as.hms())
 mutate(crt_df, require_hms = as_hms(require_tm)) %>%
   ggplot(aes(x=require_hms, y=delay)) + 
@@ -64,7 +64,7 @@ temp <- crt_df %>%
          sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
          sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp))
 
-## plain OLS
+## plain OLS ####
 lm1 <- lm((delay) ~ prereq +prepare+price +  
             rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
           data=temp)
@@ -84,7 +84,15 @@ stargazer(lm1ii, lm1i, lm1iii, lm1iv,lm1, report="cvt*", omit.stat=c("ser", "rsq
           no.space=TRUE, type="latex")
 
 
-## IVs (temperature & sudden rain)
+## IVs (temperature & sudden rain) ####
+temp %>% filter(!is.na(temp_pdp)) %>%
+  ggplot(aes(x=as.factor(round((temp_pdp-32)*5/9)), y=prereq)) + 
+  geom_boxplot(varwidth=TRUE) + 
+  labs(x="Temperate at Pudong when placing orders (Celsius)", y="Pre-require time")
+temp %>% filter(!is.na(temp_hqp)) %>%
+  ggplot(aes(x=as.factor(round((temp_hqp-32)*5/9)), y=prereq)) + 
+  geom_boxplot(varwidth=TRUE) + 
+  labs(x="Temperate at Hongqiao when placing orders (Celsius)", y="Pre-require time")
 lm2 <- lm(prereq ~ temp_hqp + temp_pdp +prepare+price +  
             rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
           data=temp)
