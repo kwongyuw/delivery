@@ -190,3 +190,34 @@ call_05m %>%
   geom_boxplot(varwidth = TRUE) + 
   coord_cartesian(ylim=c(-30, 0))  +
   labs(x="Pre-require time (in 5-min slots)", y="Delay time")
+
+
+
+## Require time at whole number minutes (each multiple of 5min)
+mutate(crt_df, require_tm_min=minute(require_tm)) %>%
+  ggplot(aes(x=require_tm_min, y=prereq, group=require_tm_min)) + 
+  geom_boxplot(varwidth=TRUE) + 
+  scale_x_continuous(breaks=seq(0, 60, 5))
+
+temp <- crt_df %>%
+  mutate(disap = delay+10, disap = ifelse(disap >-5 & disap <5, 0, disap), # not helpful looking at range
+         delay_cens = pmax(0, delay), # only looking at the time being late
+         sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
+         sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp)) %>%
+  filter((minute(require_tm) %% 5 == 0)) # multiple of 5min
+lm1 <- lm((delay) ~ prereq +prepare+price +  
+            rider_exp + user_exp + onhand + ow_ratio + rider_income + dist,
+          data=temp)
+lm1i <- lm((delay) ~ prereq +prepare+price +  
+             rider_exp + user_exp + rider_income,
+           data=temp)
+lm1ii <- lm((delay) ~ prereq + price + rider_income,
+            data=temp)
+lm1iii <- lm((delay) ~ prereq +prepare+price +  
+               rider_exp + user_exp + onhand + rider_income,
+             data=temp)
+lm1iv <- lm((delay) ~ prereq +prepare+price +  
+              rider_exp + user_exp + onhand + ow_ratio + rider_income,
+            data=temp)
+stargazer(lm1ii, lm1i, lm1iii, lm1iv,lm1, report="cvt*", omit.stat=c("ser", "rsq"),
+          no.space=TRUE, type="text")
