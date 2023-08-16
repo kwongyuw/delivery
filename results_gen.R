@@ -190,4 +190,3 @@ call_05m %>%
   geom_boxplot(varwidth = TRUE) + 
   coord_cartesian(ylim=c(-30, 0))  +
   labs(x="Pre-require time (in 5-min slots)", y="Delay time")
-
