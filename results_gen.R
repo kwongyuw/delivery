@@ -263,3 +263,39 @@ filter(temp) %>%
   ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm')
 
 # follow through users and see if they order earlier next time?
+## if prev order too late or too early, increase or decrease prereq
+temp <- group_by(crt_df, user_id, sup_id) %>%
+  filter(tmref_cat=='lunch') %>%
+  arrange(user_id, sup_id, place_tm) %>% # same user same restaurant
+  mutate(delay_lag1 = lag(delay), require_tm_lag1=lag(require_tm), place_tm_lag1=lag(place_tm), prereq_lag1=lag(prereq), 
+         tt_order=n(), occ=order(place_tm, decreasing=FALSE)) %>%
+  ungroup() %>%
+  select(user_id, sup_id:price, place_tm, require_tm, dipatch_tm, finish_tm, 
+         tmref_cat, delay, delay_lag1, require_tm_lag1, place_tm_lag1, prereq, prereq_lag1, tt_order, occ) %>%
+  arrange(desc(tt_order), user_id, sup_id, place_tm) %>%
+  filter(!is.na(delay_lag1))
+
+## by any previous order
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+temp %>% # all data
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+## by the number of repeat order
+### focus on the 2nd order
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+### colored first 6 orders 
+### (90% data, sharpest adj in 2nd order)
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ < 7) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1), color=as.character(occ))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+## qualitatively similar result in place_tm as in prereq
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ==2) %>% #, prereq-prereq_lag1!=0
+  ggplot(aes(x=delay_lag1, y=as.numeric(as_hms(place_tm) - as_hms(place_tm_lag1), units="mins"))) + 
+  geom_point(alpha=0.1) + geom_smooth(method='lm')
