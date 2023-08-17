@@ -221,3 +221,17 @@ lm1iv <- lm((delay) ~ prereq +prepare+price +
             data=temp)
 stargazer(lm1ii, lm1i, lm1iii, lm1iv,lm1, report="cvt*", omit.stat=c("ser", "rsq"),
           no.space=TRUE, type="text")
+
+# 20230816 evening
+
+# fixed required_tm=12:05, same OLS and IV qualitative result
+temp <- crt_df %>%
+  mutate(disap = delay+10, disap = ifelse(disap >-5 & disap <5, 0, disap), # not helpful looking at range
+         delay_cens = pmax(0, delay), # only looking at the time being late
+         sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
+         sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp)) %>%
+  filter((minute(require_tm) == 5), hour(require_tm)==12) # multiple of 5min
+
+# when dipatch_tm-place_tm>50 seems weird because many are dipatched after the required_tm...
+ggplot(temp, aes(y=delay, x=(left1))) + geom_point(alpha=0.1) + geom_smooth() # take 12:05 required as an example
+View(filter(arrange(temp, desc(delay)), left1>50))
