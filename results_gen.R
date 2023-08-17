@@ -235,3 +235,31 @@ temp <- crt_df %>%
 # when dipatch_tm-place_tm>50 seems weird because many are dipatched after the required_tm...
 ggplot(temp, aes(y=delay, x=(left1))) + geom_point(alpha=0.1) + geom_smooth() # take 12:05 required as an example
 View(filter(arrange(temp, desc(delay)), left1>50))
+
+# 20230817 
+# days with more orders have higher prereq time
+temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
+  group_by(require_date) %>%
+  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq)) %>%
+  filter(day_orders>3000, day_orders<7000) %>%
+  ungroup()
+filter(temp) %>%
+  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth()
+
+temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
+  filter(hour(require_tm)==12, require_tm_min %in% c(0,5,15,25,35,45,55)) %>%
+  group_by(require_date, require_tm_min) %>%
+  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq)) %>%
+  ungroup()
+filter(temp) %>%
+  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm') #, color=as.character(require_tm_min)
+
+temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
+  filter(hour(require_tm)==12, require_tm_min %in% c(5)) %>%
+  group_by(require_date, require_tm_min) %>%
+  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq)) %>%
+  ungroup()
+filter(temp) %>%
+  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm')
+
+# follow through users and see if they order earlier next time?
