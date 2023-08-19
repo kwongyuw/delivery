@@ -157,6 +157,27 @@ temp %>% # small sample of previous order for 12:05
   geom_point(alpha=0.1) + geom_smooth(method='lm')
 
 # how many percentile raised for median lunch user calling 1 minute earlier ####
+## for lunch across all 73 days
+temp <- filter(crt_df, tmref_cat=='lunch') %>%
+  mutate(place_hms=as_hms(place_tm), place_med=median(place_hms)) %>%
+  arrange(place_hms) %>%
+  mutate(place_rank=rank(place_hms, ties.method='min')) %>%
+  select(user_id, sup_id, rider_id, place_tm, require_tm, finish_tm, 
+         place_hms, place_med, place_rank)
+temp %>% mutate(place_pct=place_rank/nrow(temp)) %>%
+  filter(place_hms==place_med | place_hms==(place_med-60)) %>% View()
+(0.4999115-0.4936143)*nrow(temp)/length(unique(as.Date(temp$require_tm)))
+# 14.6 users earlier
+## for lunch by the median-busy lunch date, 2015-08-30
+temp <- filter(crt_df, tmref_cat=='lunch', require_date==ymd("2015-08-30")) %>%
+  mutate(place_hms=as_hms(place_tm), place_med=median(place_hms)) %>%
+  arrange(place_hms) %>%
+  mutate(place_rank=rank(place_hms, ties.method='min')) %>%
+  select(user_id, sup_id, rider_id, place_tm, require_tm, finish_tm, 
+         place_hms, place_med, place_rank)
+temp %>% mutate(place_pct=place_rank/nrow(temp)) %>%
+  filter( abs(place_hms - place_med)<60) %>% View()
+# 1134 -> 1110, 0.5002206 -> 0.4896339
 
 
 # regressions ####
