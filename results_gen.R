@@ -320,3 +320,19 @@ temp %>% # small sample of previous order for 12:05
   filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ==2) %>% #, prereq-prereq_lag1!=0
   ggplot(aes(x=delay_lag1, y=as.numeric(as_hms(place_tm) - as_hms(place_tm_lag1), units="mins"))) + 
   geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+## given user and restuarant, place_tm variation dominates prerrq variation
+temp1 <- filter(temp, occ==10, hour(require_tm)==12, minute(require_tm)<=30) %>%
+    mutate(pair_id=paste(user_id,'_', sup_id))
+temp1 <- mutate(temp, pair_id=paste(user_id, '_', sup_id)) %>%
+    filter(pair_id %in% temp1$pair_id)
+
+i = 0
+g1 <- filter(temp1, sup_id==names(sort(table(temp1$sup_id))[length(table(temp1$sup_id))-i])) %>% 
+  ggplot(aes(x=occ, color=as.character(user_id), y=as_hms(place_tm))) + geom_line() +
+  geom_line(aes(y=as_hms(require_tm))) +
+  coord_cartesian(xlim=c(0,30), ylim=c(as_hms('10:00:00'), as_hms('14:00:00')))
+g2 <- filter(temp1, sup_id==names(sort(table(temp1$sup_id))[length(table(temp1$sup_id))-i])) %>% 
+  ggplot(aes(x=occ, color=as.character(user_id), y=prereq)) + geom_line() +
+  coord_cartesian(xlim=c(0,30), ylim=c(0,240)) # , ylim=c(as_hms('11:00:00'), as_hms('14:00:00'))
+ggarrange(g1,g2, ncol=1, align = 'v')
