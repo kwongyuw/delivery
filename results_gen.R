@@ -257,10 +257,14 @@ filter(temp) %>%
 temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
   filter(hour(require_tm)==12, require_tm_min %in% c(5)) %>%
   group_by(require_date, require_tm_min) %>%
-  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq)) %>%
+  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq),
+            place_avg=mean(as_hms(place_tm)), place_med=median(as_hms(place_tm))) %>%
   ungroup()
 filter(temp) %>%
   ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm')
+filter(temp) %>%
+  ggplot(aes(x=day_orders, y=place_med)) + geom_point() + geom_smooth(method='lm')
+
 
 # follow through users and see if they order earlier next time?
 ## if prev order too late or too early, increase or decrease prereq
@@ -284,9 +288,26 @@ temp %>% # all data
 
 ## by the number of repeat order
 ### focus on the 2nd order
-temp %>% # small sample of previous order for 12:05
+temp %>% 
   filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ == 2) %>% 
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(-60,60))
+
+temp %>% 
+  filter(abs(as.numeric(require_tm - require_tm_lag1, units='mins'))<=15, occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(-60,60))
+
+temp %>% # small sample of previous order for 12:05
+  filter(occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(-60,60))
+
+
+temp %>% 
+  filter(abs(as.numeric(require_tm - require_tm_lag1, units='mins'))<=15, occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=as.numeric(as_hms(place_tm) - as_hms(place_tm_lag1), units="mins"))) + 
+  geom_point(alpha=0.1) + geom_smooth(method='lm') + coord_cartesian(ylim=c(0,20))
 
 ### colored first 6 orders 
 ### (90% data, sharpest adj in 2nd order)
