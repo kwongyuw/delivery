@@ -3,6 +3,8 @@ library(tidyverse)
 # detach("package:tidyverse", unload=TRUE)
 library(stargazer)
 library(AER)
+library(hms)
+library(ggpubr)
 #source('~/Documents/eScience/projects/delivery/dataprocess_model.R') # data from control groups
 setwd("/Users/kwongyu/OneDrive - UW/Projects/dwb")
 source('git/delivery/dataprocess_model.R')
@@ -56,6 +58,106 @@ mutate(crt_df, require_hms = as_hms(require_tm)) %>%
   ggplot(aes(x=require_hms, y=delay)) + 
   geom_point(size=0.1, alpha=0.1) +
   geom_smooth()
+
+## follow through users
+temp <- group_by(crt_df, user_id, sup_id) %>%
+  filter(tmref_cat=='lunch') %>%
+  arrange(user_id, sup_id, place_tm) %>% # same user same restaurant
+  mutate(delay_lag1 = lag(delay), require_tm_lag1=lag(require_tm), place_tm_lag1=lag(place_tm), prereq_lag1=lag(prereq), 
+         tt_order=n(), occ=order(place_tm, decreasing=FALSE)) %>%
+  ungroup() %>%
+  select(user_id, sup_id:price, place_tm, require_tm, dipatch_tm, finish_tm, 
+         tmref_cat, delay, delay_lag1, require_tm_lag1, place_tm_lag1, prereq, prereq_lag1, tt_order, occ) %>%
+  arrange(desc(tt_order), user_id, sup_id, place_tm) %>%
+  filter(!is.na(delay_lag1))
+
+### given user and restaurant, place_tm variation dominates prereq variation
+temp1 <- filter(temp, occ==10, hour(require_tm)==12, minute(require_tm)<=30) %>%
+  mutate(pair_id=paste(user_id,'_', sup_id))
+temp1 <- mutate(temp, pair_id=paste(user_id, '_', sup_id)) %>%
+  filter(pair_id %in% temp1$pair_id)
+i = 0
+g1 <- filter(temp1, sup_id==names(sort(table(temp1$sup_id))[length(table(temp1$sup_id))-i])) %>% 
+  ggplot(aes(x=occ, color=as.character(user_id), y=as_hms(place_tm))) + geom_line() +
+  geom_line(aes(y=as_hms(require_tm))) +
+  coord_cartesian(xlim=c(0,30), ylim=c(as_hms('10:00:00'), as_hms('14:00:00')))
+g2 <- filter(temp1, sup_id==names(sort(table(temp1$sup_id))[length(table(temp1$sup_id))-i])) %>% 
+  ggplot(aes(x=occ, color=as.character(user_id), y=prereq)) + geom_line() +
+  coord_cartesian(xlim=c(0,30), ylim=c(0,240)) 
+ggarrange(g1,g2, ncol=1, align = 'v')
+
+# More competitive days, place the orders earlier ####
+temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
+  group_by(require_date, tmref_cat) %>%
+  mutate(day_orders = n()) %>% 
+  group_by(require_date, tmref_cat, day_orders) %>%
+  summarize(prereq_avg=mean(prereq), prereq_med=median(prereq),
+            place_avg=mean(as_hms(place_tm)), place_med=median(as_hms(place_tm))) %>%
+  ungroup()
+filter(temp, tmref_cat %in% c('lunch', 'dinner')) %>%
+  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm')
+
+temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
+  group_by(require_date, tmref_cat) %>%
+  mutate(day_orders = n()) %>% 
+  group_by(require_date, tmref_cat, day_orders, require_tmref) %>%
+  summarize(prereq_avg=mean(prereq), prereq_med=median(prereq),
+            place_avg=mean(as_hms(place_tm)), place_med=median(as_hms(place_tm))) %>%
+  ungroup()
+filter(temp, tmref_cat %in% c('lunch', 'dinner')) %>%
+  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm')
+filter(temp, tmref_cat %in% c('lunch', 'dinner')) %>%
+  ggplot(aes(x=day_orders, y=place_med, color=as.character(require_tmref))) + geom_point() + geom_smooth(method='lm')
+
+
+# for individual user, if prev order too late or too early, increase or decrease prereq ####
+temp <- group_by(crt_df, user_id, sup_id) %>%
+  filter(tmref_cat=='lunch') %>%
+  arrange(user_id, sup_id, place_tm) %>% # same user same restaurant
+  mutate(delay_lag1 = lag(delay), require_tm_lag1=lag(require_tm), place_tm_lag1=lag(place_tm), prereq_lag1=lag(prereq), 
+         tt_order=n(), occ=order(place_tm, decreasing=FALSE)) %>%
+  ungroup() %>%
+  select(user_id, sup_id:price, place_tm, require_tm, dipatch_tm, finish_tm, 
+         tmref_cat, delay, delay_lag1, require_tm_lag1, place_tm_lag1, prereq, prereq_lag1, tt_order, occ) %>%
+  arrange(desc(tt_order), user_id, sup_id, place_tm) %>%
+  filter(!is.na(delay_lag1))
+## by the number of repeat order
+### focus on the 2nd order
+temp %>%  # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(-60,60))
+
+temp %>% 
+  filter(abs(as.numeric(require_tm - require_tm_lag1, units='mins'))<=15, occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(-60,60))
+
+temp %>%
+  filter(occ == 2) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(-60,60))
+## by any previous order
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+temp %>% # all data
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+### colored first 6 orders 
+### (90% data, sharpest adj in 2nd order)
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ < 7) %>% 
+  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1), color=as.character(occ))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+## qualitatively similar result in place_tm as in prereq
+temp %>% # small sample of previous order for 12:05
+  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ==2) %>% #, prereq-prereq_lag1!=0
+  ggplot(aes(x=delay_lag1, y=as.numeric(as_hms(place_tm) - as_hms(place_tm_lag1), units="mins"))) + 
+  geom_point(alpha=0.1) + geom_smooth(method='lm')
+
+# how many percentile raised for median lunch user calling 1 minute earlier ####
+
 
 # regressions ####
 temp <- crt_df %>%
@@ -136,6 +238,14 @@ lm5b <- ivreg((delay_cens) ~ prereq +
              data=temp)
 stargazer(lm1b, lm4b, lm5b, report="cvt*", omit.stat=c("ser", "rsq"),
           no.space=TRUE, type="latex")
+
+### fixed required_tm=12:05, use the following can yield the same OLS and IV qualitative result ####
+temp <- crt_df %>%
+  mutate(disap = delay+10, disap = ifelse(disap >-5 & disap <5, 0, disap), # not helpful looking at range
+         delay_cens = pmax(0, delay), # only looking at the time being late
+         sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
+         sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp)) %>%
+  filter((minute(require_tm) == 5), hour(require_tm)==12) # multiple of 5min
 
 ## Channels ####
 ### more are completed and on-tim
@@ -222,48 +332,10 @@ lm1iv <- lm((delay) ~ prereq +prepare+price +
 stargazer(lm1ii, lm1i, lm1iii, lm1iv,lm1, report="cvt*", omit.stat=c("ser", "rsq"),
           no.space=TRUE, type="text")
 
-# 20230816 evening
-
-# fixed required_tm=12:05, same OLS and IV qualitative result
-temp <- crt_df %>%
-  mutate(disap = delay+10, disap = ifelse(disap >-5 & disap <5, 0, disap), # not helpful looking at range
-         delay_cens = pmax(0, delay), # only looking at the time being late
-         sudden_rain_pdp = ifelse(is.na(pcp_begin_pdp), FALSE, pcp_begin_pdp==tm_pdp),
-         sudden_rain_hqp = ifelse(is.na(pcp_begin_hqp), FALSE, pcp_begin_hqp==tm_hqp)) %>%
-  filter((minute(require_tm) == 5), hour(require_tm)==12) # multiple of 5min
 
 # when dipatch_tm-place_tm>50 seems weird because many are dipatched after the required_tm...
 ggplot(temp, aes(y=delay, x=(left1))) + geom_point(alpha=0.1) + geom_smooth() # take 12:05 required as an example
 View(filter(arrange(temp, desc(delay)), left1>50))
-
-# 20230817 
-# days with more orders have higher prereq time
-temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
-  group_by(require_date) %>%
-  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq)) %>%
-  filter(day_orders>3000, day_orders<7000) %>%
-  ungroup()
-filter(temp) %>%
-  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth()
-
-temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
-  filter(hour(require_tm)==12, require_tm_min %in% c(0,5,15,25,35,45,55)) %>%
-  group_by(require_date, require_tm_min) %>%
-  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq)) %>%
-  ungroup()
-filter(temp) %>%
-  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm') #, color=as.character(require_tm_min)
-
-temp <- crt_df %>% mutate(require_tm_min=minute(require_tm)) %>%
-  filter(hour(require_tm)==12, require_tm_min %in% c(5)) %>%
-  group_by(require_date, require_tm_min) %>%
-  summarize(day_orders = n(), prereq_avg=mean(prereq), prereq_med=median(prereq),
-            place_avg=mean(as_hms(place_tm)), place_med=median(as_hms(place_tm))) %>%
-  ungroup()
-filter(temp) %>%
-  ggplot(aes(x=day_orders, y=prereq_avg)) + geom_point() + geom_smooth(method='lm')
-filter(temp) %>%
-  ggplot(aes(x=day_orders, y=place_med)) + geom_point() + geom_smooth(method='lm')
 
 
 # follow through users and see if they order earlier next time?
@@ -279,60 +351,11 @@ temp <- group_by(crt_df, user_id, sup_id) %>%
   arrange(desc(tt_order), user_id, sup_id, place_tm) %>%
   filter(!is.na(delay_lag1))
 
-## by any previous order
-temp %>% # small sample of previous order for 12:05
-  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5) %>% 
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
-temp %>% # all data
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
-
-## by the number of repeat order
-### focus on the 2nd order
-temp %>% 
-  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ == 2) %>% 
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
-  coord_cartesian(ylim=c(-60,60))
-
-temp %>% 
-  filter(abs(as.numeric(require_tm - require_tm_lag1, units='mins'))<=15, occ == 2) %>% 
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
-  coord_cartesian(ylim=c(-60,60))
-
-temp %>% # small sample of previous order for 12:05
-  filter(occ == 2) %>% 
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1))) + geom_point(alpha=0.1) + geom_smooth(method='lm') +
-  coord_cartesian(ylim=c(-60,60))
-
-
 temp %>% 
   filter(abs(as.numeric(require_tm - require_tm_lag1, units='mins'))<=15, occ == 2) %>% 
   ggplot(aes(x=delay_lag1, y=as.numeric(as_hms(place_tm) - as_hms(place_tm_lag1), units="mins"))) + 
   geom_point(alpha=0.1) + geom_smooth(method='lm') + coord_cartesian(ylim=c(0,20))
 
-### colored first 6 orders 
-### (90% data, sharpest adj in 2nd order)
-temp %>% # small sample of previous order for 12:05
-  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ < 7) %>% 
-  ggplot(aes(x=delay_lag1, y=(prereq-prereq_lag1), color=as.character(occ))) + geom_point(alpha=0.1) + geom_smooth(method='lm')
 
-## qualitatively similar result in place_tm as in prereq
-temp %>% # small sample of previous order for 12:05
-  filter(hour(require_tm_lag1)==12, minute(require_tm_lag1)==5, occ==2) %>% #, prereq-prereq_lag1!=0
-  ggplot(aes(x=delay_lag1, y=as.numeric(as_hms(place_tm) - as_hms(place_tm_lag1), units="mins"))) + 
-  geom_point(alpha=0.1) + geom_smooth(method='lm')
 
-## given user and restuarant, place_tm variation dominates prerrq variation
-temp1 <- filter(temp, occ==10, hour(require_tm)==12, minute(require_tm)<=30) %>%
-    mutate(pair_id=paste(user_id,'_', sup_id))
-temp1 <- mutate(temp, pair_id=paste(user_id, '_', sup_id)) %>%
-    filter(pair_id %in% temp1$pair_id)
 
-i = 0
-g1 <- filter(temp1, sup_id==names(sort(table(temp1$sup_id))[length(table(temp1$sup_id))-i])) %>% 
-  ggplot(aes(x=occ, color=as.character(user_id), y=as_hms(place_tm))) + geom_line() +
-  geom_line(aes(y=as_hms(require_tm))) +
-  coord_cartesian(xlim=c(0,30), ylim=c(as_hms('10:00:00'), as_hms('14:00:00')))
-g2 <- filter(temp1, sup_id==names(sort(table(temp1$sup_id))[length(table(temp1$sup_id))-i])) %>% 
-  ggplot(aes(x=occ, color=as.character(user_id), y=prereq)) + geom_line() +
-  coord_cartesian(xlim=c(0,30), ylim=c(0,240)) # , ylim=c(as_hms('11:00:00'), as_hms('14:00:00'))
-ggarrange(g1,g2, ncol=1, align = 'v')
